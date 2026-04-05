@@ -1,0 +1,34 @@
+name: Deploy Backend .NET
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**' # Só dispara o deploy se houver mudanças na pasta backend
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.x' # Se você usou o .NET 9 ou 10, mude aqui (ex: '10.x')
+
+      - name: Build with dotnet
+        # O asterisco ajuda a encontrar o .csproj sem precisarmos do nome exato
+        run: dotnet build ./backend/*.csproj --configuration Release
+
+      - name: dotnet publish
+        run: dotnet publish ./backend/*.csproj -c Release -o ${{env.DOTNET_ROOT}}/myapp
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'gas-control-backend' # Nome que você deu no Azure
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ${{env.DOTNET_ROOT}}/myapp
