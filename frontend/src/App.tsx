@@ -37,21 +37,21 @@ export default function App() {
 
 	const fetchApartments = async () => {
 		try {
-			const res = await fetch(`${API_BASE}/apartments`);
+			const res = await fetch(`${API_BASE}/api/apartments`);
 			if (res.ok) setApartments(await res.json());
 		} catch (e) { console.error('Erro ao buscar apartamentos', e); }
 	};
 
 	const fetchReadings = async () => {
 		try {
-			const res = await fetch(`${API_BASE}/readings/all`);
+			const res = await fetch(`${API_BASE}/api/readings/all`);
 			if (res.ok) setReadings(await res.json());
 		} catch (e) { console.error('Erro ao buscar leituras', e); }
 	};
 
 	const fetchGasPrice = async (month: string) => {
 		try {
-			const res = await fetch(`${API_BASE}/gasprices/${month}`);
+			const res = await fetch(`${API_BASE}/api/gasprices/${month}`);
 			if (res.ok) {
 				const data = await res.json();
 				setGasPrice(data.pricePerCubicMeter);
@@ -76,7 +76,7 @@ export default function App() {
 
 	const handleToggleActive = async (id: string, currentStatus: boolean) => {
 		try {
-			const res = await fetch(`${API_BASE}/apartments/${id}/state`, {
+			const res = await fetch(`${API_BASE}/api/apartments/${id}/state`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ isActive: !currentStatus })
@@ -93,7 +93,7 @@ export default function App() {
 		if (!newAptNumber.trim() || !newAptName.trim()) return;
 
 		try {
-			const res = await fetch(`${API_BASE}/apartments`, {
+			const res = await fetch(`${API_BASE}/api/apartments`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ number: newAptNumber, name: newAptName })
@@ -116,7 +116,7 @@ export default function App() {
 	const saveEdit = async () => {
 		if (!editingAptId) return;
 		try {
-			const res = await fetch(`${API_BASE}/apartments/${editingAptId}`, {
+			const res = await fetch(`${API_BASE}/api/apartments/${editingAptId}`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ number: editNumber, name: editName })
@@ -157,7 +157,7 @@ export default function App() {
 		if (isNaN(val)) return;
 
 		try {
-			const res = await fetch(`${API_BASE}/readings`, {
+			const res = await fetch(`${API_BASE}/api/readings`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -179,7 +179,7 @@ export default function App() {
 
 	const saveGasPrice = async (price: number) => {
 		try {
-			const res = await fetch(`${API_BASE}/gasprices`, {
+			const res = await fetch(`${API_BASE}/api/gasprices`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ month: selectedMonth, pricePerCubicMeter: price })
