@@ -24,11 +24,13 @@ jobs:
         run: dotnet build ./backend/*.csproj --configuration Release
 
       - name: dotnet publish
-        run: dotnet publish ./backend/*.csproj -c Release -o ${{env.DOTNET_ROOT}}/myapp
+        # Vamos publicar em uma pasta chamada 'out' na raiz do runner
+        run: dotnet publish ./backend/*.csproj -c Release -o ${{ github.workspace }}/out
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'gas-control-backend' # Nome que você deu no Azure
+          app-name: 'gas-control-backend'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ${{env.DOTNET_ROOT}}/myapp
+          # Aqui está o segredo: apontar para a pasta exata do output
+          package: ${{ github.workspace }}/out
