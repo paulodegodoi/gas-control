@@ -15,7 +15,7 @@ type Reading = {
 	currentReading: number;
 };
 
-const API_BASE = `http://${window.location.hostname}:5243/api`;
+const API_BASE = import.meta.env.VITE_API_URL;
 
 export default function App() {
 	const [apartments, setApartments] = useState<Apartment[]>([]);
