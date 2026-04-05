@@ -1,6 +1,10 @@
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations.Schema;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Configuração de CORS para permitir que o Frontend acesse a API
 builder.Services.AddCors(options =>
@@ -18,59 +22,48 @@ var app = builder.Build();
 
 app.UseCors();
 
-// Simulação de Banco de Dados em Memória (como não estamos usando um BD real por enquanto)
-var apartments = new List<Apartment>
-{
-    new Apartment { Id = Guid.NewGuid().ToString(), Number = "101", Name = "Família Silva", IsActive = true },
-    new Apartment { Id = Guid.NewGuid().ToString(), Number = "102", Name = "Família Souza", IsActive = true },
-    new Apartment { Id = Guid.NewGuid().ToString(), Number = "103", Name = "Família Lima", IsActive = false },
-    new Apartment { Id = Guid.NewGuid().ToString(), Number = "201", Name = "Família Carvalho", IsActive = true }
-};
-
-var readings = new List<Reading>
-{
-    new Reading { Id = Guid.NewGuid().ToString(), ApartmentId = apartments[0].Id, Month = "2023-09", PreviousReading = 120, CurrentReading = 135 },
-    new Reading { Id = Guid.NewGuid().ToString(), ApartmentId = apartments[1].Id, Month = "2023-09", PreviousReading = 200, CurrentReading = 215 },
-    new Reading { Id = Guid.NewGuid().ToString(), ApartmentId = apartments[3].Id, Month = "2023-09", PreviousReading = 80, CurrentReading = 92 },
-    new Reading { Id = Guid.NewGuid().ToString(), ApartmentId = apartments[0].Id, Month = "2023-10", PreviousReading = 135, CurrentReading = 151 }
-};
-
-
 // ----------------
 // Endpoints de Apartamentos
 // ----------------
 
-app.MapGet("/api/apartments", () => Results.Ok(apartments));
+app.MapGet("/api/apartments", async (AppDbContext db) => await db.Apartments.ToListAsync());
 
-app.MapPost("/api/apartments", ([FromBody] CreateApartmentRequest request) =>
+app.MapPost("/api/apartments", async (AppDbContext db, CreateApartmentRequest request) =>
 {
-    var newApt = new Apartment
+    var apt = new Apartment
     {
         Id = Guid.NewGuid().ToString(),
         Number = request.Number,
         Name = request.Name,
         IsActive = true
     };
-    apartments.Add(newApt);
-    return Results.Created($"/api/apartments/{newApt.Id}", newApt);
+
+    db.Apartments.Add(apt);
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/api/apartments/{apt.Id}", apt);
 });
 
-app.MapPut("/api/apartments/{id}", (string id, [FromBody] UpdateApartmentRequest request) =>
+app.MapPut("/api/apartments/{id}", async (AppDbContext db, string id, UpdateApartmentRequest request) =>
 {
-    var apt = apartments.FirstOrDefault(a => a.Id == id);
+    var apt = await db.Apartments.FindAsync(id);
     if (apt is null) return Results.NotFound();
 
     apt.Number = request.Number;
     apt.Name = request.Name;
+
+    await db.SaveChangesAsync();
     return Results.Ok(apt);
 });
 
-app.MapPatch("/api/apartments/{id}/state", (string id, [FromBody] UpdateApartmentStateRequest request) =>
+app.MapPatch("/api/apartments/{id}/state", async (AppDbContext db, string id, UpdateApartmentStateRequest request) =>
 {
-    var apt = apartments.FirstOrDefault(a => a.Id == id);
+    var apt = await db.Apartments.FindAsync(id);
     if (apt is null) return Results.NotFound();
 
     apt.IsActive = request.IsActive;
+
+    await db.SaveChangesAsync();
     return Results.Ok(apt);
 });
 
@@ -78,42 +71,102 @@ app.MapPatch("/api/apartments/{id}/state", (string id, [FromBody] UpdateApartmen
 // Endpoints de Leituras
 // ----------------
 
-app.MapGet("/api/readings", ([FromQuery] string? month) => 
+app.MapGet("/api/readings", async (AppDbContext db, string? month) =>
 {
-    if(string.IsNullOrEmpty(month)) return Results.Ok(readings);
-    return Results.Ok(readings.Where(r => r.Month == month));
+    var query = db.Readings.AsQueryable();
+
+    if (!string.IsNullOrEmpty(month))
+        query = query.Where(r => r.Month == month);
+
+    return await query.ToListAsync();
 });
 
-app.MapGet("/api/readings/history/{apartmentId}", (string apartmentId) =>
-{
-    return Results.Ok(readings.Where(r => r.ApartmentId == apartmentId).OrderBy(r => r.Month));
-});
+//app.MapGet("/api/readings/history/{apartmentId}", (string apartmentId) =>
+//{
+//    return Results.Ok(readings.Where(r => r.ApartmentId == apartmentId).OrderBy(r => r.Month));
+//});
 
-app.MapGet("/api/readings/all", () =>
+app.MapGet("/api/readings/all", async (AppDbContext db) =>
 {
-    return Results.Ok(readings);
-});
+    var readings = await db.Readings
+        .OrderBy(r => r.ApartmentId)
+        .ThenBy(r => r.Month)
+        .ToListAsync();
 
-app.MapPost("/api/readings", ([FromBody] CreateReadingRequest request) =>
-{
-    var existingReading = readings.FirstOrDefault(r => r.ApartmentId == request.ApartmentId && r.Month == request.Month);
-    if (existingReading != null)
+    // calcula PreviousReading para cada leitura
+    foreach (var r in readings)
     {
-        existingReading.CurrentReading = request.CurrentReading;
-        existingReading.PreviousReading = request.PreviousReading;
-        return Results.Ok(existingReading);
+        var prev = readings
+            .Where(x => x.ApartmentId == r.ApartmentId && string.Compare(x.Month, r.Month) < 0)
+            .OrderByDescending(x => x.Month)
+            .FirstOrDefault();
+
+        r.PreviousReading = prev?.CurrentReading ?? 0;
     }
 
-    var newReading = new Reading
+    return readings;
+});
+
+app.MapPost("/api/readings", async (AppDbContext db, CreateReadingRequest request) =>
+{
+    var existing = await db.Readings
+        .FirstOrDefaultAsync(r => r.ApartmentId == request.ApartmentId && r.Month == request.Month);
+
+    if (existing != null)
+    {
+        existing.CurrentReading = request.CurrentReading;
+        await db.SaveChangesAsync();
+        return Results.Ok(existing);
+    }
+
+    var reading = new Reading
     {
         Id = Guid.NewGuid().ToString(),
         ApartmentId = request.ApartmentId,
         Month = request.Month,
-        PreviousReading = request.PreviousReading,
         CurrentReading = request.CurrentReading
+        // PreviousReading não é salvo
     };
-    readings.Add(newReading);
-    return Results.Created($"/api/readings", newReading);
+
+    db.Readings.Add(reading);
+    await db.SaveChangesAsync();
+
+    return Results.Created("/api/readings", reading);
+});
+
+// ----------------
+// Endpoints de Preços do Gás (Gas Prices)
+// ----------------
+
+app.MapGet("/api/gasprices/{month}", async (AppDbContext db, string month) =>
+{
+    var gasPrice = await db.GasPrices.FirstOrDefaultAsync(g => g.Month == month);
+    if (gasPrice is null) return Results.NotFound();
+    return Results.Ok(gasPrice);
+});
+
+app.MapPost("/api/gasprices", async (AppDbContext db, CreateGasPriceRequest request) =>
+{
+    var existing = await db.GasPrices.FirstOrDefaultAsync(g => g.Month == request.Month);
+    
+    if (existing != null)
+    {
+        existing.PricePerCubicMeter = request.PricePerCubicMeter;
+        await db.SaveChangesAsync();
+        return Results.Ok(existing);
+    }
+
+    var gasPrice = new GasPrice
+    {
+        Id = Guid.NewGuid().ToString(),
+        Month = request.Month,
+        PricePerCubicMeter = request.PricePerCubicMeter
+    };
+
+    db.GasPrices.Add(gasPrice);
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/api/gasprices/{gasPrice.Month}", gasPrice);
 });
 
 app.Run();
@@ -122,7 +175,7 @@ app.Run();
 // Models & DTOs
 // ----------------
 
-class Apartment
+public class Apartment
 {
     public string Id { get; set; } = string.Empty;
     public string Number { get; set; } = string.Empty;
@@ -130,16 +183,26 @@ class Apartment
     public bool IsActive { get; set; }
 }
 
-class Reading
+public class Reading
 {
     public string Id { get; set; } = string.Empty;
     public string ApartmentId { get; set; } = string.Empty;
     public string Month { get; set; } = string.Empty;
+
+    [NotMapped]
     public double PreviousReading { get; set; }
     public double CurrentReading { get; set; }
+}
+
+public class GasPrice
+{
+    public string Id { get; set; } = string.Empty;
+    public string Month { get; set; } = string.Empty;
+    public double PricePerCubicMeter { get; set; }
 }
 
 public record CreateApartmentRequest(string Number, string Name);
 public record UpdateApartmentRequest(string Number, string Name);
 public record UpdateApartmentStateRequest(bool IsActive);
 public record CreateReadingRequest(string ApartmentId, string Month, double PreviousReading, double CurrentReading);
+public record CreateGasPriceRequest(string Month, double PricePerCubicMeter);
