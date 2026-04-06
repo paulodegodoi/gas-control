@@ -15,5 +15,8 @@ build/
 .env.development
 .DS_Store
 
+# --- Backend ---
+appsettings.Development.json
+
 # --- Outros ---
 .vscode/ 
