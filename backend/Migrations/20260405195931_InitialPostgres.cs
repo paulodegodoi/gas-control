@@ -5,7 +5,7 @@
 namespace GasControl.Api.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialPostgres : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -14,10 +14,10 @@ namespace GasControl.Api.Migrations
                 name: "Apartments",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    Number = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                    Id = table.Column<string>(type: "text", nullable: false),
+                    Number = table.Column<string>(type: "text", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -25,14 +25,26 @@ namespace GasControl.Api.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "GasPrices",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "text", nullable: false),
+                    Month = table.Column<string>(type: "text", nullable: false),
+                    PricePerCubicMeter = table.Column<double>(type: "double precision", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_GasPrices", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Readings",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    ApartmentId = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    Month = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    PreviousReading = table.Column<double>(type: "float", nullable: false),
-                    CurrentReading = table.Column<double>(type: "float", nullable: false)
+                    Id = table.Column<string>(type: "text", nullable: false),
+                    ApartmentId = table.Column<string>(type: "text", nullable: false),
+                    Month = table.Column<string>(type: "text", nullable: false),
+                    CurrentReading = table.Column<double>(type: "double precision", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -54,6 +66,9 @@ namespace GasControl.Api.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "GasPrices");
+
             migrationBuilder.DropTable(
                 name: "Readings");
 
