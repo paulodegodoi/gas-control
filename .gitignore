@@ -15,5 +15,5 @@ build/
 .env.development
 .DS_Store
 
-# --- Outros teste ---
+# --- Outros ---
 .vscode/ 
