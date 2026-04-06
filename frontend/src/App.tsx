@@ -50,61 +50,64 @@ export default function App() {
 	};
 
 	const fetchGasPrice = async (month: string) => {
-		try {
-			const res = await fetch(`${API_BASE}/api/gasprices/${month}`);
-			if (res.ok) {
-				const data = await res.json();
-				setGasPrice(data.pricePerCubicMeter);
-			} else {
-				setGasPrice(0);
-			}
-		} catch (e) {
+		const res = await fetch(`${API_BASE}/api/gasprices/${month}`);
+		
+		if (res.ok) {
+			const data = await res.json();
+			setGasPrice(data.pricePerCubicMeter);
+		} else {
 			setGasPrice(0);
 		}
 	};
 
 	useEffect(() => {
-		fetchApartments();
-		fetchReadings();
+		const loadData = async () => {
+			await fetchApartments();
+			await fetchReadings();
+		};
+
+		loadData();
 	}, []);
 
 	useEffect(() => {
-		fetchGasPrice(selectedMonth);
+		const loadGas = async () => {
+			await fetchGasPrice(selectedMonth);
+		};
+
+		loadGas();
 	}, [selectedMonth]);
 
 	const activeApartments = useMemo(() => apartments.filter(a => a.isActive), [apartments]);
 
 	const handleToggleActive = async (id: string, currentStatus: boolean) => {
-		try {
-			const res = await fetch(`${API_BASE}/api/apartments/${id}/state`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ isActive: !currentStatus })
-			});
-			if (res.ok) {
-				const updated = await res.json();
-				setApartments(prev => prev.map(a => a.id === id ? updated : a));
-			}
-		} catch (e) { }
+		const res = await fetch(`${API_BASE}/api/apartments/${id}/state`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ isActive: !currentStatus })
+		});
+
+		if (res.ok) {
+			const updated = await res.json();
+			setApartments(prev => prev.map(a => a.id === id ? updated : a));
+		}
 	};
 
 	const handleAddApartment = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!newAptNumber.trim() || !newAptName.trim()) return;
 
-		try {
-			const res = await fetch(`${API_BASE}/api/apartments`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ number: newAptNumber, name: newAptName })
-			});
-			if (res.ok) {
-				const created = await res.json();
-				setApartments(prev => [...prev, created]);
-				setNewAptNumber('');
-				setNewAptName('');
-			}
-		} catch (e) { }
+		const res = await fetch(`${API_BASE}/api/apartments`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ number: newAptNumber, name: newAptName })
+		});
+		
+		if (res.ok) {
+			const created = await res.json();
+			setApartments(prev => [...prev, created]);
+			setNewAptNumber('');
+			setNewAptName('');
+		}
 	};
 
 	const startEditing = (apt: Apartment) => {
@@ -115,18 +118,18 @@ export default function App() {
 
 	const saveEdit = async () => {
 		if (!editingAptId) return;
-		try {
-			const res = await fetch(`${API_BASE}/api/apartments/${editingAptId}`, {
-				method: 'PUT',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ number: editNumber, name: editName })
-			});
-			if (res.ok) {
-				const updated = await res.json();
-				setApartments(prev => prev.map(a => a.id === editingAptId ? updated : a));
-				setEditingAptId(null);
-			}
-		} catch (e) { }
+
+		const res = await fetch(`${API_BASE}/api/apartments/${editingAptId}`, {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ number: editNumber, name: editName })
+		});
+
+		if (res.ok) {
+			const updated = await res.json();
+			setApartments(prev => prev.map(a => a.id === editingAptId ? updated : a));
+			setEditingAptId(null);
+		}
 	};
 
 	console.log(readings);
@@ -156,39 +159,37 @@ export default function App() {
 		const val = parseFloat(currentReadingStr);
 		if (isNaN(val)) return;
 
-		try {
-			const res = await fetch(`${API_BASE}/api/readings`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					apartmentId,
-					month: selectedMonth,
-					previousReading: previousReading,
-					currentReading: val
-				})
+		const res = await fetch(`${API_BASE}/api/readings`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				apartmentId,
+				month: selectedMonth,
+				previousReading: previousReading,
+				currentReading: val
+			})
+		});
+
+		if (res.ok) {
+			const updated = await res.json();
+			setReadings(prev => {
+				const newReadings = prev.filter(r => !(r.apartmentId === updated.apartmentId && r.month === updated.month));
+				return [...newReadings, updated];
 			});
-			if (res.ok) {
-				const updated = await res.json();
-				setReadings(prev => {
-					const newReadings = prev.filter(r => !(r.apartmentId === updated.apartmentId && r.month === updated.month));
-					return [...newReadings, updated];
-				});
-			}
-		} catch (e) { }
+		}
 	};
 
 	const saveGasPrice = async (price: number) => {
-		try {
-			const res = await fetch(`${API_BASE}/api/gasprices`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ month: selectedMonth, pricePerCubicMeter: price })
-			});
-			if (res.ok) {
-				const updated = await res.json();
-				setGasPrice(updated.pricePerCubicMeter);
-			}
-		} catch (e) { }
+		const res = await fetch(`${API_BASE}/api/gasprices`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ month: selectedMonth, pricePerCubicMeter: price })
+		});
+
+		if (res.ok) {
+			const updated = await res.json();
+			setGasPrice(updated.pricePerCubicMeter);
+		}
 	};
 
 	return (
