@@ -12,6 +12,7 @@ node_modules/
 dist/
 build/
 .env
+.env.development
 .DS_Store
 
 # --- Outros ---
