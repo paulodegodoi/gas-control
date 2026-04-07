@@ -93,25 +93,32 @@ app.MapGet("/api/readings", async (AppDbContext db, string? month) =>
 //    return Results.Ok(readings.Where(r => r.ApartmentId == apartmentId).OrderBy(r => r.Month));
 //});
 
-app.MapGet("/api/readings/all", async (AppDbContext db) =>
+app.MapPost("/api/readings/bulk", async (AppDbContext db, List<CreateReadingRequest> requests) =>
 {
-    var readings = await db.Readings
-        .OrderBy(r => r.ApartmentId)
-        .ThenBy(r => r.Month)
-        .ToListAsync();
-
-    // calcula PreviousReading para cada leitura
-    foreach (var r in readings)
+    foreach (var req in requests)
     {
-        var prev = readings
-            .Where(x => x.ApartmentId == r.ApartmentId && string.Compare(x.Month, r.Month) < 0)
-            .OrderByDescending(x => x.Month)
-            .FirstOrDefault();
+        var existing = await db.Readings
+            .FirstOrDefaultAsync(r => r.ApartmentId == req.ApartmentId && r.Month == req.Month);
 
-        r.PreviousReading = prev?.CurrentReading ?? 0;
+        if (existing != null)
+        {
+            existing.CurrentReading = req.CurrentReading;
+        }
+        else
+        {
+            var reading = new Reading
+            {
+                Id = Guid.NewGuid().ToString(),
+                ApartmentId = req.ApartmentId,
+                Month = req.Month,
+                CurrentReading = req.CurrentReading
+            };
+            db.Readings.Add(reading);
+        }
     }
-
-    return readings;
+    
+    await db.SaveChangesAsync();
+    return Results.Ok();
 });
 
 app.MapPost("/api/readings", async (AppDbContext db, CreateReadingRequest request) =>
