@@ -45,9 +45,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build
+    # ADICIONE ESTA LINHA ABAIXO:
+    # Ela diz: "Só execute este job se NÃO for um Pull Request"
+    if: github.event_name != 'pull_request' 
     permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
+      id-token: write
+      contents: read
 
     steps:
       - name: Download artifact from build job
