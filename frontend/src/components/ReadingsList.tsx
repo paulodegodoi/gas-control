@@ -43,9 +43,9 @@ export default function ReadingsList({
 								</div>
 							</div>
 
-							<div className="flex items-center space-x-4 xl:space-x-6 w-full xl:w-auto justify-end">
+							<div className="flex items-center space-x-4 xl:space-x-8 w-full xl:w-auto justify-end">
 								<div className="flex flex-col items-end">
-									<label className="text-xs text-slate-500 mb-1 font-medium">Leitura Atual (m³)</label>
+									<label className="text-xs text-slate-500 mb-1 font-medium whitespace-nowrap">Leitura Atual (m³)</label>
 									<input
 										type="number"
 										step="0.01"
@@ -56,13 +56,13 @@ export default function ReadingsList({
 									/>
 								</div>
 								<div className="w-24 text-right">
-									<span className="text-xs text-slate-500 font-medium block">Consumo</span>
+									<span className="text-xs text-slate-500 font-medium block whitespace-nowrap">Consumo</span>
 									<span className={`text-lg font-bold ${consumo > 0 ? 'text-primary-600' : 'text-slate-400'}`}>
 										{consumo > 0 ? consumo.toFixed(2) : '0.00'}
 									</span>
 								</div>
-								<div className="w-28 text-right bg-slate-50 p-2 rounded-lg border border-slate-100">
-									<span className="text-xs text-slate-500 font-medium block">A Pagar</span>
+								<div className="w-32 text-right bg-slate-50 p-2 rounded-lg border border-slate-100 shrink-0">
+									<span className="text-xs text-slate-500 font-medium block whitespace-nowrap">A Pagar</span>
 									<span className={`text-lg font-bold ${consumo > 0 ? 'text-primary-600' : 'text-slate-400'}`}>
 										R$ {consumo > 0 ? (consumo * effectivePrice).toFixed(2) : '0.00'}
 									</span>

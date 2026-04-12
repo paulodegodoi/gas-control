@@ -1,5 +1,3 @@
-import React from 'react';
-
 type NavigationHeaderProps = {
 	activeModule: 'gas' | 'water';
 	setActiveModule: (module: 'gas' | 'water') => void;

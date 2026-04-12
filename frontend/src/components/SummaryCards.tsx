@@ -1,5 +1,3 @@
-import React from 'react';
-
 type SummaryCardsProps = {
 	totalConsumption: number;
 	totalToPay: number;
@@ -16,15 +14,15 @@ export default function SummaryCards({
 	return (
 		<div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 mt-8">
 			<div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center">
-				<span className="text-sm text-slate-500 font-medium">Consumo Total (m³)</span>
+				<span className="text-sm text-slate-500 font-medium whitespace-nowrap">Consumo Total (m³)</span>
 				<span className="text-3xl font-bold text-slate-800 mt-2">{totalConsumption.toFixed(2)}</span>
 			</div>
 			<div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center">
-				<span className="text-sm text-slate-500 font-medium">Valor Total a Pagar</span>
+				<span className="text-sm text-slate-500 font-medium whitespace-nowrap">Valor Total a Pagar</span>
 				<span className="text-3xl font-bold text-primary-600 mt-2">R$ {totalToPay.toFixed(2)}</span>
 			</div>
 			<div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center">
-				<span className="text-sm text-slate-500 font-medium pb-2">Status de Alterações</span>
+				<span className="text-sm text-slate-500 font-medium pb-2 whitespace-nowrap">Status de Alterações</span>
 				<button 
 					onClick={onSave}
 					disabled={!isDirty}
