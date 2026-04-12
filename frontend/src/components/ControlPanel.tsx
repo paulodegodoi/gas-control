@@ -3,7 +3,7 @@ import type { Apartment, Reading } from '../types';
 import ControlHeader from './ControlHeader';
 import SummaryCards from './SummaryCards';
 import ReadingsList, { type CurrentReadingData } from './ReadingsList';
-
+import { useAuth } from '../context/AuthContext';
 
 
 const API_BASE = import.meta.env.VITE_API_URL;
@@ -29,6 +29,7 @@ type ControlPanelProps = {
 export default function ControlPanel({ moduleName, apartments }: ControlPanelProps) {
 	const [currentMonthReadings, setCurrentMonthReadings] = useState<Reading[]>([]);
 	const [previousMonthReadings, setPreviousMonthReadings] = useState<Reading[]>([]);
+	const { token, user, activeCondominiumId } = useAuth();
 	
 	const [selectedMonth, setSelectedMonth] = useState<string>(() => {
 		const saved = localStorage.getItem(`${moduleName}Control_selectedMonth`);
@@ -54,13 +55,15 @@ export default function ControlPanel({ moduleName, apartments }: ControlPanelPro
 	}, [selectedMonth, moduleName]);
 
 	const fetchReadingsForMonth = useCallback(async (month: string) => {
-		if (!month) return [];
+		if (!month || !token) return [];
 		try {
-			const res = await fetch(`${API_BASE}/api/${readingsApiUrl}?month=${month}`);
+			const res = await fetch(`${API_BASE}/api/${readingsApiUrl}?month=${month}`, {
+				headers: { 'Authorization': `Bearer ${token}` }
+			});
 			if (res.ok) return await res.json();
 		} catch (e) { console.error('Erro ao buscar leituras', e); }
 		return [];
-	}, [readingsApiUrl]);
+	}, [readingsApiUrl, token]);
 
 	const loadMonthData = useCallback(async () => {
 		const prevMonth = getPreviousMonth(selectedMonth);
@@ -78,8 +81,12 @@ export default function ControlPanel({ moduleName, apartments }: ControlPanelPro
 	}, [selectedMonth, fetchReadingsForMonth]);
 
 	const fetchPrice = useCallback(async (month: string) => {
+		if (!token) return;
 		try {
-            const res = await fetch(`${API_BASE}/api/${priceApiUrl}/${month}`);
+            const url = `${API_BASE}/api/${priceApiUrl}/${month}` + (activeCondominiumId ? `?condominiumId=${activeCondominiumId}` : '');
+            const res = await fetch(url, {
+				headers: { 'Authorization': `Bearer ${token}` }
+			});
             if (res.ok) {
                 const data = await res.json();
                 setPrice(data.pricePerCubicMeter);
@@ -89,7 +96,7 @@ export default function ControlPanel({ moduleName, apartments }: ControlPanelPro
         } catch {
             setPrice(0);
         }
-	}, [priceApiUrl]);
+	}, [priceApiUrl, token, activeCondominiumId]);
 
 	useEffect(() => {
 		const loadData = async () => {
@@ -121,7 +128,7 @@ export default function ControlPanel({ moduleName, apartments }: ControlPanelPro
 	};
 
 	const saveAllEdits = async () => {
-		if (!isDirty) return;
+		if (!isDirty || !token) return;
 
 		if (priceInEdit !== null) {
 			const num = parseFloat(priceInEdit);
@@ -153,7 +160,10 @@ export default function ControlPanel({ moduleName, apartments }: ControlPanelPro
 		try {
             const res = await fetch(`${API_BASE}/api/${readingsApiUrl}/bulk`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${token}`
+				},
                 body: JSON.stringify(requests)
             });
 
@@ -167,8 +177,11 @@ export default function ControlPanel({ moduleName, apartments }: ControlPanelPro
         try {
             const res = await fetch(`${API_BASE}/api/${priceApiUrl}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ month: selectedMonth, pricePerCubicMeter: newPrice })
+                headers: { 
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${token}`
+				},
+                body: JSON.stringify({ month: selectedMonth, pricePerCubicMeter: newPrice, condominiumId: activeCondominiumId })
             });
             if (res.ok) {
                 const updated = await res.json();
@@ -222,6 +235,7 @@ export default function ControlPanel({ moduleName, apartments }: ControlPanelPro
                 selectedMonth={selectedMonth}
                 onPriceChange={handlePriceChange}
                 onMonthChange={setSelectedMonth}
+				readOnlyPrice={user?.role === 'Morador'}
             />
 
             <SummaryCards 
@@ -229,6 +243,7 @@ export default function ControlPanel({ moduleName, apartments }: ControlPanelPro
                 totalToPay={totalToPay}
                 isDirty={isDirty}
                 onSave={saveAllEdits}
+				hideSaveButton={user?.role === 'Morador'}
             />
 
             <ReadingsList 
@@ -237,6 +252,7 @@ export default function ControlPanel({ moduleName, apartments }: ControlPanelPro
                 readingsInEdit={readingsInEdit}
                 effectivePrice={effectivePrice}
                 onUpdateReadingInput={handleUpdateReadingInput}
+				readOnly={user?.role === 'Morador'}
             />
         </div>
 	);

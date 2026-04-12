@@ -18,7 +18,7 @@ public static class GasEndpoints
                 query = query.Where(r => r.Month == month);
 
             return await query.ToListAsync();
-        });
+        }).RequireAuthorization("ReadOnly");
 
         app.MapPost("/api/gas/readings/bulk", async (AppDbContext db, List<CreateGasReadingRequest> requests) =>
         {
@@ -46,7 +46,7 @@ public static class GasEndpoints
             
             await db.SaveChangesAsync();
             return Results.Ok();
-        });
+        }).RequireAuthorization("CanWrite");
 
         app.MapPost("/api/gas/readings", async (AppDbContext db, CreateGasReadingRequest request) =>
         {
@@ -72,21 +72,29 @@ public static class GasEndpoints
             await db.SaveChangesAsync();
 
             return Results.Created("/api/gas/readings", reading);
-        });
+        }).RequireAuthorization("CanWrite");
 
         // ----------------
         // Endpoints de Preços do Gás
         // ----------------
-        app.MapGet("/api/gasprices/{month}", async (AppDbContext db, string month) =>
+        app.MapGet("/api/gasprices/{month}", async (AppDbContext db, string month, [Microsoft.AspNetCore.Mvc.FromQuery] string? condominiumId) =>
         {
-            var gasPrice = await db.GasPrices.FirstOrDefaultAsync(g => g.Month == month);
+            var query = db.GasPrices.Where(g => g.Month == month);
+            if (!string.IsNullOrEmpty(condominiumId))
+                query = query.Where(g => g.CondominiumId == condominiumId);
+
+            var gasPrice = await query.FirstOrDefaultAsync();
             if (gasPrice is null) return Results.NotFound();
             return Results.Ok(gasPrice);
-        });
+        }).RequireAuthorization("ReadOnly");
 
         app.MapPost("/api/gasprices", async (AppDbContext db, CreateGasPriceRequest request) =>
         {
-            var existing = await db.GasPrices.FirstOrDefaultAsync(g => g.Month == request.Month);
+            var query = db.GasPrices.Where(g => g.Month == request.Month);
+            if (!string.IsNullOrEmpty(request.CondominiumId))
+                query = query.Where(g => g.CondominiumId == request.CondominiumId);
+
+            var existing = await query.FirstOrDefaultAsync();
             
             if (existing != null)
             {
@@ -99,16 +107,17 @@ public static class GasEndpoints
             {
                 Id = Guid.NewGuid().ToString(),
                 Month = request.Month,
-                PricePerCubicMeter = request.PricePerCubicMeter
+                PricePerCubicMeter = request.PricePerCubicMeter,
+                CondominiumId = request.CondominiumId
             };
 
             db.GasPrices.Add(gasPrice);
             await db.SaveChangesAsync();
 
             return Results.Created($"/api/gasprices/{gasPrice.Month}", gasPrice);
-        });
+        }).RequireAuthorization("CanWrite");
     }
 }
 
 public record CreateGasReadingRequest(string ApartmentId, string Month, double PreviousReading, double CurrentReading);
-public record CreateGasPriceRequest(string Month, double PricePerCubicMeter);
+public record CreateGasPriceRequest(string Month, double PricePerCubicMeter, string? CondominiumId);

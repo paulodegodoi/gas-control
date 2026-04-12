@@ -18,7 +18,7 @@ public static class WaterEndpoints
                 query = query.Where(r => r.Month == month);
 
             return await query.ToListAsync();
-        });
+        }).RequireAuthorization("ReadOnly");
 
         app.MapPost("/api/water/readings/bulk", async (AppDbContext db, List<CreateWaterReadingRequest> requests) =>
         {
@@ -46,7 +46,7 @@ public static class WaterEndpoints
             
             await db.SaveChangesAsync();
             return Results.Ok();
-        });
+        }).RequireAuthorization("CanWrite");
 
         app.MapPost("/api/water/readings", async (AppDbContext db, CreateWaterReadingRequest request) =>
         {
@@ -72,21 +72,29 @@ public static class WaterEndpoints
             await db.SaveChangesAsync();
 
             return Results.Created("/api/water/readings", reading);
-        });
+        }).RequireAuthorization("CanWrite");
 
         // ----------------
         // Endpoints de Preços da Água
         // ----------------
-        app.MapGet("/api/waterprices/{month}", async (AppDbContext db, string month) =>
+        app.MapGet("/api/waterprices/{month}", async (AppDbContext db, string month, [Microsoft.AspNetCore.Mvc.FromQuery] string? condominiumId) =>
         {
-            var waterPrice = await db.WaterPrices.FirstOrDefaultAsync(g => g.Month == month);
+            var query = db.WaterPrices.Where(g => g.Month == month);
+            if (!string.IsNullOrEmpty(condominiumId))
+                query = query.Where(g => g.CondominiumId == condominiumId);
+
+            var waterPrice = await query.FirstOrDefaultAsync();
             if (waterPrice is null) return Results.NotFound();
             return Results.Ok(waterPrice);
-        });
+        }).RequireAuthorization("ReadOnly");
 
         app.MapPost("/api/waterprices", async (AppDbContext db, CreateWaterPriceRequest request) =>
         {
-            var existing = await db.WaterPrices.FirstOrDefaultAsync(g => g.Month == request.Month);
+            var query = db.WaterPrices.Where(g => g.Month == request.Month);
+            if (!string.IsNullOrEmpty(request.CondominiumId))
+                query = query.Where(g => g.CondominiumId == request.CondominiumId);
+
+            var existing = await query.FirstOrDefaultAsync();
             
             if (existing != null)
             {
@@ -99,16 +107,17 @@ public static class WaterEndpoints
             {
                 Id = Guid.NewGuid().ToString(),
                 Month = request.Month,
-                PricePerCubicMeter = request.PricePerCubicMeter
+                PricePerCubicMeter = request.PricePerCubicMeter,
+                CondominiumId = request.CondominiumId
             };
 
             db.WaterPrices.Add(waterPrice);
             await db.SaveChangesAsync();
 
             return Results.Created($"/api/waterprices/{waterPrice.Month}", waterPrice);
-        });
+        }).RequireAuthorization("CanWrite");
     }
 }
 
 public record CreateWaterReadingRequest(string ApartmentId, string Month, double PreviousReading, double CurrentReading);
-public record CreateWaterPriceRequest(string Month, double PricePerCubicMeter);
+public record CreateWaterPriceRequest(string Month, double PricePerCubicMeter, string? CondominiumId);
