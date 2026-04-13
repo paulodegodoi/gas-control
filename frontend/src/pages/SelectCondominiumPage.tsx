@@ -6,7 +6,7 @@ import type { Condominium } from '../types';
 const API_BASE = import.meta.env.VITE_API_URL;
 
 export default function SelectCondominiumPage() {
-    const { token, user, setActiveCondominiumId } = useAuth();
+    const { token, user, setActiveCondominiumId, refreshContext } = useAuth();
     const navigate = useNavigate();
     const [condominiums, setCondominiums] = useState<Condominium[]>([]);
     const [loading, setLoading] = useState(true);
@@ -59,6 +59,10 @@ export default function SelectCondominiumPage() {
                 setCondominiums(prev => [...prev, created]);
                 setIsCreating(false);
                 setNewName('');
+
+                if (user?.role === 'Sindico') {
+                    await refreshContext();
+                }
             }
         } catch (e) {
             console.error('Error creating condominium', e);

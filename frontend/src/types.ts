@@ -40,5 +40,6 @@ export type AuthContextType = {
     activeCondominiumId: string | null;
     setActiveCondominiumId: (id: string | null) => void;
 	login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+    refreshContext: () => Promise<{ success: boolean; error?: string }>;
 	logout: () => void;
 };

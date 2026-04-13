@@ -34,6 +34,35 @@ public static class AuthEndpoints
             });
         }).AllowAnonymous();
 
+        group.MapPost("/refresh", async (AppDbContext db, TokenService tokenService, HttpContext httpContext) =>
+        {
+            var callerIdStr = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                    ?? httpContext.User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+            
+            if (string.IsNullOrEmpty(callerIdStr) || !Guid.TryParse(callerIdStr, out var callerIdGuid))
+                return Results.Unauthorized();
+
+            var user = await db.Users.FindAsync(callerIdGuid);
+            if (user is null)
+                return Results.Unauthorized();
+
+            var token = tokenService.GenerateToken(user);
+
+            return Results.Ok(new
+            {
+                token,
+                user = new
+                {
+                    id = user.Id,
+                    name = user.Name,
+                    email = user.Email,
+                    role = user.Role.ToString(),
+                    condominiumIds = user.CondominiumIds,
+                    apartmentId = user.ApartmentId
+                }
+            });
+        }).RequireAuthorization();
+
         group.MapPost("/register", async (
             AppDbContext db,
             TokenService tokenService,
