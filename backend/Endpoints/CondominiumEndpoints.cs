@@ -33,9 +33,18 @@ public static class CondominiumEndpoints
 
             if (callerRole == nameof(UserRole.Sindico))
             {
-                // Optionally if a Sindico creates it, it should be added to their profile? 
-                // However, they can just be attached later or via an explicit grant by Admin.
-                // For simplicity, we just create the entity here.
+                var subIdStr = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                    ?? httpContext.User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+
+                if (Guid.TryParse(subIdStr, out var callerIdGuid))
+                {
+                    var callerUser = await db.Users.FindAsync(callerIdGuid);
+                    if (callerUser != null)
+                    {
+                        if (callerUser.CondominiumIds == null) callerUser.CondominiumIds = new List<string>();
+                        callerUser.CondominiumIds.Add(condo.Id);
+                    }
+                }
             }
 
             await db.SaveChangesAsync();

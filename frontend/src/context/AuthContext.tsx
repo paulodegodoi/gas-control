@@ -59,6 +59,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		}
 	}, []);
 
+	const refreshContext = useCallback(async () => {
+        if (!token) return { success: false, error: 'Não autenticado' };
+		try {
+			const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+				method: 'POST',
+				headers: { 'Authorization': `Bearer ${token}` }
+			});
+			if (!res.ok) return { success: false, error: 'Token inválido' };
+            
+			const data = await res.json();
+			const { token: jwt, user: userData } = data as { token: string; user: AuthUser };
+            
+			localStorage.setItem(TOKEN_KEY, jwt);
+			localStorage.setItem(USER_KEY, JSON.stringify(userData));
+			setToken(jwt);
+			setUser(userData);
+			return { success: true };
+		} catch {
+			return { success: false, error: 'Erro de conexão.' };
+		}
+	}, [token]);
+
 	const logout = useCallback(() => {
 		localStorage.removeItem(TOKEN_KEY);
 		localStorage.removeItem(USER_KEY);
@@ -79,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 	return (
 		<AuthContext.Provider
-			value={{ token, user, isAuthenticated: !!token && !!user, activeCondominiumId, setActiveCondominiumId: handleSetActiveCondo, login, logout }}
+			value={{ token, user, isAuthenticated: !!token && !!user, activeCondominiumId, setActiveCondominiumId: handleSetActiveCondo, login, refreshContext, logout }}
 		>
 			{children}
 		</AuthContext.Provider>
