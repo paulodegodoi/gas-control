@@ -6,6 +6,9 @@ import UsersManager from './components/UsersManager';
 import ControlPanel from './components/ControlPanel';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
+import SetupPasswordPage from './pages/SetupPasswordPage';
 import SelectCondominiumPage from './pages/SelectCondominiumPage';
 import PrivateRoute from './components/PrivateRoute';
 
@@ -121,6 +124,13 @@ export default function App() {
 			<BrowserRouter>
 				<Routes>
 					<Route path="/login" element={<LoginPage />} />
+					<Route path="/forgot-password" element={<ForgotPasswordPage />} />
+					<Route path="/reset-password" element={<ResetPasswordPage />} />
+					<Route path="/setup-password" element={
+						<PrivateRoute>
+							<SetupPasswordPage />
+						</PrivateRoute>
+					} />
 					<Route path="/select-condominium" element={
 						<PrivateRoute>
 							<SelectCondominiumPage />
