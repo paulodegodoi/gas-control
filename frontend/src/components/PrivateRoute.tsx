@@ -7,12 +7,20 @@ interface PrivateRouteProps {
 }
 
 export default function PrivateRoute({ children }: PrivateRouteProps) {
-	const { isAuthenticated } = useAuth();
+	const { isAuthenticated, user } = useAuth();
 	const location = useLocation();
 
 	if (!isAuthenticated) {
 		// Preserva a URL original para redirecionar após login
 		return <Navigate to="/login" state={{ from: location }} replace />;
+	}
+
+	if (user?.mustChangePassword && location.pathname !== '/setup-password') {
+		return <Navigate to="/setup-password" replace />;
+	}
+
+	if (!user?.mustChangePassword && location.pathname === '/setup-password') {
+		return <Navigate to="/" replace />;
 	}
 
 	return <>{children}</>;

@@ -20,4 +20,9 @@ public class User
     /// Preenchido apenas para usuários com Role = Morador.
     /// </summary>
     public string? ApartmentId { get; set; }
+
+    public string? PasswordResetToken { get; set; }
+    public DateTime? PasswordResetExpiry { get; set; }
+
+    public bool MustChangePassword { get; set; } = true;
 }

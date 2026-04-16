@@ -31,6 +31,7 @@ export type AuthUser = {
 	role: UserRole;
 	condominiumIds: string[];
 	apartmentId?: string | null;
+	mustChangePassword?: boolean;
 };
 
 export type AuthContextType = {

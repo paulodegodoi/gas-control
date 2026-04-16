@@ -29,7 +29,8 @@ public static class AuthEndpoints
                     email = user.Email,
                     role = user.Role.ToString(),
                     condominiumIds = user.CondominiumIds,
-                    apartmentId = user.ApartmentId
+                    apartmentId = user.ApartmentId,
+                    mustChangePassword = user.MustChangePassword
                 }
             });
         }).AllowAnonymous();
@@ -58,7 +59,8 @@ public static class AuthEndpoints
                     email = user.Email,
                     role = user.Role.ToString(),
                     condominiumIds = user.CondominiumIds,
-                    apartmentId = user.ApartmentId
+                    apartmentId = user.ApartmentId,
+                    mustChangePassword = user.MustChangePassword
                 }
             });
         }).RequireAuthorization();
@@ -115,10 +117,50 @@ public static class AuthEndpoints
                 email = user.Email,
                 role = user.Role.ToString(),
                 condominiumIds = user.CondominiumIds,
-                apartmentId = user.ApartmentId
+                apartmentId = user.ApartmentId,
+                mustChangePassword = user.MustChangePassword
             });
         }).RequireAuthorization("CanWrite");
 
+        group.MapPost("/forgot-password", async (AppDbContext db, ForgotPasswordRequest request) =>
+        {
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+            if (user is null)
+            {
+                // Always return OK so we don't leak if an email exists or not
+                return Results.Ok(new { message = "Se o e-mail existir, um link de recuperação foi enviado." });
+            }
+
+            var token = Guid.NewGuid().ToString();
+            user.PasswordResetToken = token;
+            user.PasswordResetExpiry = DateTime.UtcNow.AddHours(1);
+
+            await db.SaveChangesAsync();
+
+            // Mock email sending: Log the reset URL to the console
+            var resetUrl = $"http://localhost:5173/reset-password?token={token}&email={user.Email}";
+            Console.WriteLine($"\n[MOCK EMAIL] Para redefinir a senha de {user.Email}, acesse o link:\n{resetUrl}\n");
+
+            return Results.Ok(new { message = "Se o e-mail existir, um link de recuperação foi enviado.", mockLink = resetUrl });
+        }).AllowAnonymous();
+
+        group.MapPost("/reset-password", async (AppDbContext db, ResetPasswordRequest request) =>
+        {
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Email == request.Email && u.PasswordResetToken == request.Token);
+            
+            if (user is null || user.PasswordResetExpiry < DateTime.UtcNow)
+            {
+                return Results.BadRequest("Token inválido ou expirado.");
+            }
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            user.PasswordResetToken = null;
+            user.PasswordResetExpiry = null;
+
+            await db.SaveChangesAsync();
+
+            return Results.Ok(new { message = "Senha alterada com sucesso." });
+        }).AllowAnonymous();
 
         group.MapGet("/users", async (AppDbContext db, HttpContext httpContext) =>
         {
@@ -151,6 +193,26 @@ public static class AuthEndpoints
 
             return Results.Ok(users);
         }).RequireAuthorization("ReadOnly");
+
+        group.MapPost("/change-password", async (AppDbContext db, HttpContext httpContext, ChangePasswordRequest request) =>
+        {
+            var callerIdStr = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                    ?? httpContext.User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+            
+            if (string.IsNullOrEmpty(callerIdStr) || !Guid.TryParse(callerIdStr, out var callerIdGuid))
+                return Results.Unauthorized();
+
+            var user = await db.Users.FindAsync(callerIdGuid);
+            if (user is null)
+                return Results.Unauthorized();
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            user.MustChangePassword = false;
+
+            await db.SaveChangesAsync();
+
+            return Results.Ok(new { message = "Senha alterada com sucesso." });
+        }).RequireAuthorization();
     }
 }
 
@@ -162,3 +224,7 @@ public record RegisterRequest(
     string Role,
     List<string>? CondominiumIds,
     string? ApartmentId);
+
+public record ForgotPasswordRequest(string Email);
+public record ResetPasswordRequest(string Email, string Token, string NewPassword);
+public record ChangePasswordRequest(string NewPassword);

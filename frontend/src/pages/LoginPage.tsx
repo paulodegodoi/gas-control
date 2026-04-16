@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
@@ -93,6 +93,12 @@ export default function LoginPage() {
 								{showPassword ? '🙈' : '👁️'}
 							</button>
 						</div>
+					</div>
+
+					<div style={{ textAlign: 'right', marginBottom: '1rem' }}>
+						<Link to="/forgot-password" style={{ color: '#fff', fontSize: '0.85rem', textDecoration: 'underline' }}>
+							Esqueci minha senha
+						</Link>
 					</div>
 
 					{error && (
