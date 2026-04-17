@@ -2,6 +2,7 @@ using GasControl.Api.Models;
 using GasControl.Api.Models.Auth;
 using GasControl.Api.Models.Gas;
 using GasControl.Api.Models.Water;
+using GasControl.Api.Models.Finance;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
@@ -20,6 +21,10 @@ public class AppDbContext : DbContext
 
     // Auth
     public DbSet<User> Users => Set<User>();
+
+    // Finance
+    public DbSet<FinanceCategory> FinanceCategories => Set<FinanceCategory>();
+    public DbSet<FinanceSubCategory> FinanceSubCategories => Set<FinanceSubCategory>();
 
     private readonly Func<ClaimsPrincipal?> _currentUserProvider;
 
@@ -74,6 +79,18 @@ public class AppDbContext : DbContext
             .Property(u => u.Role)
             .HasConversion<string>();
 
+        // Finance
+        modelBuilder.Entity<FinanceCategory>()
+            .HasKey(f => f.Id);
+        modelBuilder.Entity<FinanceCategory>()
+            .HasMany(f => f.SubCategories)
+            .WithOne()
+            .HasForeignKey(s => s.FinanceCategoryId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<FinanceSubCategory>()
+            .HasKey(f => f.Id);
+
         // ---------------------------------------------------------
         // Global Query Filters
         // ---------------------------------------------------------
@@ -94,5 +111,8 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Condominium>()
             .HasQueryFilter(c => IsAdmin || UserCondominiumIds.Contains(c.Id));
+
+        modelBuilder.Entity<FinanceCategory>()
+            .HasQueryFilter(f => IsAdmin || (f.CondominiumId != null && UserCondominiumIds.Contains(f.CondominiumId)));
     }
 }

@@ -4,6 +4,7 @@ import NavigationHeader from './components/NavigationHeader';
 import ApartmentsManager from './components/ApartmentsManager';
 import UsersManager from './components/UsersManager';
 import ControlPanel from './components/ControlPanel';
+import FinancialDashboard from './components/FinancialDashboard';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -17,7 +18,7 @@ import type { Apartment } from './types';
 const API_BASE = import.meta.env.VITE_API_URL;
 
 function AppContent() {
-	const [activeModule, setActiveModule] = useState<'gas' | 'water'>('gas');
+	const [activeModule, setActiveModule] = useState<'gas' | 'water' | 'finance'>('gas');
     const [apartments, setApartments] = useState<Apartment[]>([]);
 	const { token, user, activeCondominiumId } = useAuth();
 
@@ -36,6 +37,13 @@ function AppContent() {
 		// eslint-disable-next-line react-hooks/set-state-in-effect
 		fetchApartments();
 	}, [fetchApartments]);
+
+    useEffect(() => {
+        if (user?.role === 'Morador' && activeModule === 'finance') {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setActiveModule('gas');
+        }
+    }, [user, activeModule]);
 
     const handleAddApartment = async (number: string, name: string) => {
 		const res = await fetch(`${API_BASE}/api/apartments`, {
@@ -87,21 +95,24 @@ function AppContent() {
     }
 
 	return (
-		<div className={`min-h-screen text-slate-800 p-6 md:p-12 font-sans transition-colors ${activeModule === 'gas' ? 'theme-gas bg-slate-50' : 'theme-water bg-slate-50'}`}>
+		<div className={`min-h-screen text-slate-800 p-6 md:p-12 font-sans transition-colors ${activeModule === 'gas' ? 'theme-gas bg-slate-50' : activeModule === 'water' ? 'theme-water bg-slate-50' : 'theme-finance bg-slate-50'}`}>
 			<div className="max-w-screen-2xl mx-auto">
 				<NavigationHeader activeModule={activeModule} setActiveModule={setActiveModule} />
 
 				<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-					<div className="lg:col-span-2">
+					<div className={activeModule === 'finance' ? "lg:col-span-3" : "lg:col-span-2"}>
                         {activeModule === 'gas' && (
                             <ControlPanel moduleName="gas" apartments={apartments} />
                         )}
                         {activeModule === 'water' && (
                             <ControlPanel moduleName="water" apartments={apartments} />
                         )}
+                        {activeModule === 'finance' && user?.role !== 'Morador' && (
+                            <FinancialDashboard />
+                        )}
 					</div>
 
-					{user?.role !== 'Morador' && (
+					{user?.role !== 'Morador' && activeModule !== 'finance' && (
 						<div className="space-y-6">
 							<ApartmentsManager 
 								apartments={apartments}

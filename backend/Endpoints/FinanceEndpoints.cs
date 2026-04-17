@@ -1,0 +1,92 @@
+using GasControl.Api.Models.Finance;
+using Microsoft.EntityFrameworkCore;
+
+namespace GasControl.Api.Endpoints;
+
+public static class FinanceEndpoints
+{
+    public static void MapFinanceEndpoints(this IEndpointRouteBuilder app)
+    {
+        // GET Dashboard Data
+        app.MapGet("/api/finance/{condominiumId}/{year}", async (AppDbContext db, string condominiumId, int year) =>
+        {
+            var categories = await db.FinanceCategories
+                .Include(c => c.SubCategories)
+                .Where(c => c.CondominiumId == condominiumId && c.Year == year)
+                .OrderBy(c => c.Name) // Ensuring consistent order could be nice, or just rely on EF
+                .ToListAsync();
+
+            if (categories.Count == 0)
+            {
+                // Create defaults explicitly in the order requested by Frontend
+                string[] defaultCats = ["Pessoal", "Consumo", "Manutenção", "Material", "Seguros", "Administrativo", "Fundo de Reserva"];
+                foreach(var c in defaultCats) 
+                {
+                    var cat = new FinanceCategory 
+                    { 
+                        Id = Guid.NewGuid().ToString(),
+                        CondominiumId = condominiumId, 
+                        Year = year, 
+                        Name = c, 
+                        BaseValues = new decimal[12] 
+                    };
+                    db.FinanceCategories.Add(cat);
+                    categories.Add(cat);
+                }
+                await db.SaveChangesAsync();
+            }
+            
+            return Results.Ok(categories);
+        }).RequireAuthorization("CanWrite"); // Only Sindico and Admin
+
+        // POST Sync Dashboard Data
+        app.MapPost("/api/finance/sync/{condominiumId}/{year}", async (AppDbContext db, string condominiumId, int year, List<FinanceCategoryPayload> payload) =>
+        {
+            var existingCats = await db.FinanceCategories
+                .Include(c => c.SubCategories)
+                .Where(c => c.CondominiumId == condominiumId && c.Year == year)
+                .ToListAsync();
+
+            foreach (var reqCat in payload)
+            {
+                var dbCat = existingCats.FirstOrDefault(c => c.Id == reqCat.Id);
+                if (dbCat != null)
+                {
+                    // Update base values
+                    dbCat.BaseValues = reqCat.BaseValues;
+                    
+                    // Delete removed subcategories
+                    var reqSubIds = reqCat.SubCategories.Select(s => s.Id).ToList();
+                    dbCat.SubCategories.RemoveAll(s => !reqSubIds.Contains(s.Id));
+
+                    // Add or update
+                    foreach (var reqSub in reqCat.SubCategories)
+                    {
+                        var dbSub = dbCat.SubCategories.FirstOrDefault(s => s.Id == reqSub.Id);
+                        if (dbSub != null)
+                        {
+                            dbSub.Name = reqSub.Name;
+                            dbSub.Values = reqSub.Values;
+                        }
+                        else
+                        {
+                            dbCat.SubCategories.Add(new FinanceSubCategory
+                            {
+                                Id = string.IsNullOrEmpty(reqSub.Id) ? Guid.NewGuid().ToString() : reqSub.Id,
+                                FinanceCategoryId = dbCat.Id,
+                                Name = reqSub.Name,
+                                Values = reqSub.Values
+                            });
+                        }
+                    }
+                }
+            }
+
+            await db.SaveChangesAsync();
+            return Results.Ok();
+        }).RequireAuthorization("CanWrite");
+    }
+}
+
+public record FinanceSubCategoryPayload(string Id, string Name, decimal[] Values);
+public record FinanceCategoryPayload(string Id, string Name, decimal[] BaseValues, List<FinanceSubCategoryPayload> SubCategories);
