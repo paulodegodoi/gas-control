@@ -3,8 +3,8 @@ import { useState } from 'react';
 import UserManagementModal from './UserManagementModal';
 
 interface NavigationHeaderProps {
-	activeModule: 'gas' | 'water';
-	setActiveModule: (m: 'gas' | 'water') => void;
+	activeModule: 'gas' | 'water' | 'finance';
+	setActiveModule: (m: 'gas' | 'water' | 'finance') => void;
 }
 
 export default function NavigationHeader({ activeModule, setActiveModule }: NavigationHeaderProps) {
@@ -35,6 +35,18 @@ export default function NavigationHeader({ activeModule, setActiveModule }: Navi
 					>
 						💧 ÁGUA
 					</button>
+                    {user?.role !== 'Morador' && (
+                        <button
+                            onClick={() => setActiveModule('finance')}
+                            className={`flex-1 md:flex-none px-6 md:px-8 py-3 md:py-4 rounded-xl font-bold transition-all whitespace-nowrap text-sm md:text-base ${
+                                activeModule === 'finance'
+                                    ? 'bg-gradient-to-r from-slate-700 to-slate-900 text-white shadow-lg shadow-slate-300'
+                                    : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-100'
+                            }`}
+                        >
+                            📊 FINANCEIRO
+                        </button>
+                    )}
 				</div>
 				
 				<div className="flex items-center space-x-4 mt-4 md:mt-0 px-2 md:px-0 text-sm w-full md:w-auto justify-end">

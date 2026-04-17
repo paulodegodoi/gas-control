@@ -110,5 +110,6 @@ app.MapApartmentEndpoints();
 app.MapCondominiumEndpoints();
 app.MapGasEndpoints();
 app.MapWaterEndpoints();
+app.MapFinanceEndpoints();
 
 app.Run();
