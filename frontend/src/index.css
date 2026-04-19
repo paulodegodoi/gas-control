@@ -349,3 +349,14 @@ body {
   transition: background 0.2s, transform 0.15s;
 }
 .nav-logout-btn:hover { background: #dc2626; transform: translateY(-1px); }
+
+/* Remove arrows from number inputs */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}

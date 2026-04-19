@@ -1,4 +1,5 @@
 import React from 'react';
+import MonthPicker from './MonthPicker';
 
 type ControlHeaderProps = {
 	title: string;
@@ -57,11 +58,9 @@ export default function ControlHeader({
 				<div className="flex-1 flex items-center justify-between bg-white p-3 rounded-lg border border-slate-100">
 					<div className="flex flex-col w-full">
 						<span className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Mês de Referência</span>
-						<input
-							type="month"
+						<MonthPicker 
 							value={selectedMonth}
-							onChange={(e) => onMonthChange(e.target.value)}
-							className="bg-transparent border-b-2 border-transparent px-1 py-1 text-lg font-bold text-slate-700 outline-none focus:border-primary-500 transition-all w-full"
+							onChange={onMonthChange}
 						/>
 					</div>
 				</div>

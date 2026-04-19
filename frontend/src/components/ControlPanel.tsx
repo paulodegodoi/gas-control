@@ -4,6 +4,7 @@ import ControlHeader from './ControlHeader';
 import SummaryCards from './SummaryCards';
 import ReadingsList, { type CurrentReadingData } from './ReadingsList';
 import { useAuth } from '../context/AuthContext';
+import LoadingOverlay from './LoadingOverlay';
 
 
 const API_BASE = import.meta.env.VITE_API_URL;
@@ -46,6 +47,8 @@ export default function ControlPanel({ moduleName, apartments }: ControlPanelPro
 	// Bulk editing readings
 	const [readingsInEdit, setReadingsInEdit] = useState<Record<string, string>>({});
 	const [isDirty, setIsDirty] = useState(false);
+	const [isSaving, setIsSaving] = useState(false);
+	const [isLoading, setIsLoading] = useState(false);
 
     const priceApiUrl = moduleName === 'gas' ? 'gasprices' : 'waterprices';
     const readingsApiUrl = moduleName === 'gas' ? 'gas/readings' : 'water/readings';
@@ -100,8 +103,13 @@ export default function ControlPanel({ moduleName, apartments }: ControlPanelPro
 
 	useEffect(() => {
 		const loadData = async () => {
-			await loadMonthData();
-			await fetchPrice(selectedMonth);
+            setIsLoading(true);
+            try {
+			    await loadMonthData();
+			    await fetchPrice(selectedMonth);
+            } finally {
+                setIsLoading(false);
+            }
 		};
 		loadData();
 	}, [selectedMonth, loadMonthData, fetchPrice, moduleName]);
@@ -129,6 +137,7 @@ export default function ControlPanel({ moduleName, apartments }: ControlPanelPro
 
 	const saveAllEdits = async () => {
 		if (!isDirty || !token) return;
+        setIsSaving(true);
 
 		if (priceInEdit !== null) {
 			const num = parseFloat(priceInEdit);
@@ -170,7 +179,9 @@ export default function ControlPanel({ moduleName, apartments }: ControlPanelPro
             if (res.ok) {
                 await loadMonthData(); 
             }
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error(e); } finally {
+            setIsSaving(false);
+        }
 	};
 
 	const savePrice = async (newPrice: number) => {
@@ -254,6 +265,9 @@ export default function ControlPanel({ moduleName, apartments }: ControlPanelPro
                 onUpdateReadingInput={handleUpdateReadingInput}
 				readOnly={user?.role === 'Morador'}
             />
+            
+            <LoadingOverlay isVisible={isSaving} text="Salvando alterações..." />
+            <LoadingOverlay isVisible={isLoading} text="Carregando dados..." />
         </div>
 	);
 }
