@@ -1,6 +1,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useAuth } from '../context/AuthContext';
 import type { Condominium, UserRole, Apartment } from '../types';
+import LoadingOverlay from './LoadingOverlay';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -180,10 +181,11 @@ export default function UserManagementModal({ isOpen, onClose }: UserManagementM
 
                     <button type="submit" disabled={loading}
                         className="w-full mt-6 py-4 bg-primary-600 hover:bg-primary-700 text-white font-black rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50">
-                        {loading ? 'CRIANDO...' : 'CRIAR ACESSO'}
+                        CRIAR ACESSO
                     </button>
                 </form>
             </div>
+            <LoadingOverlay isVisible={loading} text="Criando usuário..." />
         </div>
     );
 }

@@ -12,14 +12,16 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import SetupPasswordPage from './pages/SetupPasswordPage';
 import SelectCondominiumPage from './pages/SelectCondominiumPage';
 import PrivateRoute from './components/PrivateRoute';
+import LoadingOverlay from './components/LoadingOverlay';
 
 import type { Apartment } from './types';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
 function AppContent() {
-	const [activeModule, setActiveModule] = useState<'gas' | 'water' | 'finance'>('gas');
+	const [activeModule, setActiveModule] = useState<'gas' | 'water' | 'finance' | 'members'>('gas');
     const [apartments, setApartments] = useState<Apartment[]>([]);
+    const [isSaving, setIsSaving] = useState(false);
 	const { token, user, activeCondominiumId } = useAuth();
 
     const fetchApartments = useCallback(async () => {
@@ -46,48 +48,63 @@ function AppContent() {
     }, [user, activeModule]);
 
     const handleAddApartment = async (number: string, name: string) => {
-		const res = await fetch(`${API_BASE}/api/apartments`, {
-			method: 'POST',
-			headers: { 
-				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${token}`
-			},
-			body: JSON.stringify({ number, name, condominiumId: activeCondominiumId || null })
-		});
-		if (res.ok) {
-			const created = await res.json();
-			setApartments(prev => [...prev, created]);
-		}
+        setIsSaving(true);
+        try {
+            const res = await fetch(`${API_BASE}/api/apartments`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ number, name, condominiumId: activeCondominiumId || null })
+            });
+            if (res.ok) {
+                const created = await res.json();
+                setApartments(prev => [...prev, created]);
+            }
+        } finally {
+            setIsSaving(false);
+        }
 	};
 
      const handleToggleActive = async (id: string, currentStatus: boolean) => {
-		const res = await fetch(`${API_BASE}/api/apartments/${id}/state`, {
-			method: 'PATCH',
-			headers: { 
-				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${token}`
-			},
-			body: JSON.stringify({ isActive: !currentStatus })
-		});
-		if (res.ok) {
-			const updated = await res.json();
-			setApartments(prev => prev.map(a => a.id === id ? updated : a));
-		}
+        setIsSaving(true);
+        try {
+            const res = await fetch(`${API_BASE}/api/apartments/${id}/state`, {
+                method: 'PATCH',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ isActive: !currentStatus })
+            });
+            if (res.ok) {
+                const updated = await res.json();
+                setApartments(prev => prev.map(a => a.id === id ? updated : a));
+            }
+        } finally {
+            setIsSaving(false);
+        }
 	};
 
     const handleEditApartment = async (id: string, number: string, name: string) => {
-		const res = await fetch(`${API_BASE}/api/apartments/${id}`, {
-			method: 'PUT',
-			headers: { 
-				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${token}`
-			},
-			body: JSON.stringify({ number, name })
-		});
-		if (res.ok) {
-			const updated = await res.json();
-			setApartments(prev => prev.map(a => a.id === id ? updated : a));
-		}
+        setIsSaving(true);
+        try {
+            const res = await fetch(`${API_BASE}/api/apartments/${id}`, {
+                method: 'PUT',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ number, name })
+            });
+            if (res.ok) {
+                const updated = await res.json();
+                setApartments(prev => prev.map(a => a.id === id ? updated : a));
+            }
+        } finally {
+            setIsSaving(false);
+        }
 	};
 
 	if (user?.role !== 'Morador' && !activeCondominiumId) {
@@ -99,8 +116,22 @@ function AppContent() {
 			<div className="max-w-screen-2xl mx-auto">
 				<NavigationHeader activeModule={activeModule} setActiveModule={setActiveModule} />
 
-				<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-					<div className={activeModule === 'finance' ? "lg:col-span-3" : "lg:col-span-2"}>
+				{activeModule === 'members' && user?.role !== 'Morador' ? (
+					<div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+						<div>
+							<ApartmentsManager 
+								apartments={apartments}
+								onAddApartment={handleAddApartment}
+								onToggleActive={handleToggleActive}
+								onEditApartment={handleEditApartment}
+							/>
+						</div>
+						<div>
+                            <UsersManager />
+						</div>
+					</div>
+				) : (
+					<div className="w-full">
                         {activeModule === 'gas' && (
                             <ControlPanel moduleName="gas" apartments={apartments} />
                         )}
@@ -111,20 +142,10 @@ function AppContent() {
                             <FinancialDashboard />
                         )}
 					</div>
-
-					{user?.role !== 'Morador' && activeModule !== 'finance' && (
-						<div className="space-y-6">
-							<ApartmentsManager 
-								apartments={apartments}
-								onAddApartment={handleAddApartment}
-								onToggleActive={handleToggleActive}
-								onEditApartment={handleEditApartment}
-							/>
-                            <UsersManager />
-						</div>
-					)}
-				</div>
+				)}
 			</div>
+            
+            <LoadingOverlay isVisible={isSaving} text="Salvando..." />
 		</div>
 	);
 }

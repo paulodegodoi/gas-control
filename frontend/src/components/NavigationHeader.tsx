@@ -3,8 +3,8 @@ import { useState } from 'react';
 import UserManagementModal from './UserManagementModal';
 
 interface NavigationHeaderProps {
-	activeModule: 'gas' | 'water' | 'finance';
-	setActiveModule: (m: 'gas' | 'water' | 'finance') => void;
+	activeModule: 'gas' | 'water' | 'finance' | 'members';
+	setActiveModule: (m: 'gas' | 'water' | 'finance' | 'members') => void;
 }
 
 export default function NavigationHeader({ activeModule, setActiveModule }: NavigationHeaderProps) {
@@ -50,6 +50,18 @@ export default function NavigationHeader({ activeModule, setActiveModule }: Navi
 				</div>
 				
 				<div className="flex items-center space-x-4 mt-4 md:mt-0 px-2 md:px-0 text-sm w-full md:w-auto justify-end">
+					{user?.role !== 'Morador' && (
+						<button
+							onClick={() => setActiveModule('members')}
+							className={`px-4 md:px-6 py-2.5 md:py-3 rounded-xl font-bold transition-all whitespace-nowrap text-sm md:text-base ${
+								activeModule === 'members'
+									? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg shadow-purple-200'
+									: 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-100'
+							}`}
+						>
+							👥 APTS & MEMBROS
+						</button>
+					)}
 					<div className="text-right flex-1 md:flex-none mr-2">
 						<div className="font-bold text-slate-800">{user?.name}</div>
 						<div className="text-xs text-slate-400 font-medium">

@@ -1,6 +1,7 @@
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect, Fragment, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { DollarSign, TrendingUp, Calendar, PieChart, ChevronDown, ChevronRight, Plus, CornerDownRight, X, Save, Loader2, Edit2, Trash2 } from 'lucide-react';
+import { DollarSign, TrendingUp, Calendar, PieChart, ChevronDown, ChevronRight, Plus, CornerDownRight, X, Save, Loader2, Edit2, Trash2, Copy } from 'lucide-react';
+import LoadingOverlay from './LoadingOverlay';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -32,6 +33,7 @@ export default function FinancialDashboard() {
     
     const [year, setYear] = useState(new Date().getFullYear());
     const [data, setData] = useState<Record<string, CategoryData>>({});
+    const [originalDataStr, setOriginalDataStr] = useState<string>('{}');
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -56,6 +58,7 @@ export default function FinancialDashboard() {
                         }
                     });
                     setData(record);
+                    setOriginalDataStr(JSON.stringify(record));
                 }
             } catch (error) {
                 console.error("Error fetching finance data", error);
@@ -82,6 +85,7 @@ export default function FinancialDashboard() {
                 body: JSON.stringify(payload)
             });
             if (res.ok) {
+                setOriginalDataStr(JSON.stringify(data));
                 // optional: show success toast
             }
         } catch(error) {
@@ -214,13 +218,31 @@ export default function FinancialDashboard() {
         });
     };
 
-    if (isLoading) {
-        return (
-            <div className="flex justify-center items-center h-64 text-slate-400">
-                <Loader2 className="w-8 h-8 animate-spin" />
-            </div>
-        );
-    }
+    const handleRepeatBaseValue = (catName: string, value: number) => {
+        setData(prev => {
+            const newData = { ...prev };
+            newData[catName] = { ...newData[catName], baseValues: Array(12).fill(value) };
+            return newData;
+        });
+    };
+
+    const handleRepeatSubValue = (catName: string, subId: string, value: number) => {
+        setData(prev => {
+            const newData = { ...prev };
+            const newSubs = newData[catName].subCategories.map(sub => {
+                if (sub.id === subId) {
+                    return { ...sub, values: Array(12).fill(value) };
+                }
+                return sub;
+            });
+            newData[catName] = { ...newData[catName], subCategories: newSubs };
+            return newData;
+        });
+    };
+
+    const isDirty = useMemo(() => {
+        return JSON.stringify(data) !== originalDataStr;
+    }, [data, originalDataStr]);
 
     return (
         <div className="space-y-6">
@@ -274,8 +296,8 @@ export default function FinancialDashboard() {
 
                     <button 
                         onClick={handleSave}
-                        disabled={isSaving}
-                        className="flex-1 md:flex-none flex items-center justify-center px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm shadow-blue-200 transition-all disabled:opacity-70 disabled:cursor-wait"
+                        disabled={isSaving || !isDirty}
+                        className="flex-1 md:flex-none flex items-center justify-center px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm shadow-blue-200 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                         {isSaving ? 'Salvando...' : 'Salvar Alterações'}
@@ -314,7 +336,7 @@ export default function FinancialDashboard() {
                         <div className="text-2xl font-bold text-slate-800">
                             {formatCurrency(Math.max(...Array.from({length: 12}).map((_, i) => 
                                 CATEGORIAS.reduce((acc, cat) => 
-                                    acc + (data[cat]?.baseValues[i] || 0) + (data[cat]?.subCategories.reduce((subAcc, sub) => subAcc + sub.values[i], 0) || 0)
+                                    acc + (data[cat]?.baseValues[i] || 0) + ((data[cat]?.subCategories || []).reduce((subAcc, sub) => subAcc + sub.values[i], 0) || 0)
                                 , 0)
                             )))}
                         </div>
@@ -403,16 +425,25 @@ export default function FinancialDashboard() {
                                                 const monthlyTotal = catData.baseValues[mIdx] + catData.subCategories.reduce((acc, sub) => acc + sub.values[mIdx], 0);
                                                 
                                                 return (
-                                                    <td key={mIdx} className="py-2 px-2 text-sm text-slate-600 text-right group-hover:text-slate-900 transition-colors">
+                                                    <td key={mIdx} className="py-2 px-2 text-sm text-slate-600 text-right group-hover:text-slate-900 transition-colors group/cell relative">
                                                         {hasSubCats ? (
                                                             <div className="px-2 font-medium">{formatCurrency(monthlyTotal)}</div>
                                                         ) : (
-                                                            <input 
-                                                                type="number"
-                                                                value={catData.baseValues[mIdx] || ''}
-                                                                onChange={(e) => handleBaseValueChange(cat, mIdx, Number(e.target.value) || 0)}
-                                                                className="w-20 md:w-24 bg-transparent outline-none border border-transparent hover:border-slate-200 focus:border-blue-500 rounded p-1 text-right transition-colors"
-                                                            />
+                                                            <div className="flex items-center justify-end">
+                                                                <button 
+                                                                    onClick={() => handleRepeatBaseValue(cat, catData.baseValues[mIdx] || 0)}
+                                                                    className="mr-1 opacity-0 group-hover/cell:opacity-100 p-1 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-all"
+                                                                    title="Repetir valor para todos os meses"
+                                                                >
+                                                                    <Copy className="w-3.5 h-3.5" />
+                                                                </button>
+                                                                <input 
+                                                                    type="number"
+                                                                    value={catData.baseValues[mIdx] || ''}
+                                                                    onChange={(e) => handleBaseValueChange(cat, mIdx, Number(e.target.value) || 0)}
+                                                                    className="w-20 md:w-24 bg-transparent outline-none border border-transparent hover:border-slate-200 focus:border-blue-500 rounded p-1 text-right transition-colors"
+                                                                />
+                                                            </div>
                                                         )}
                                                     </td>
                                                 );
@@ -449,13 +480,22 @@ export default function FinancialDashboard() {
                                                     </div>
                                                 </td>
                                                 {sub.values.map((v, i) => (
-                                                    <td key={i} className="py-2 px-2 text-sm text-slate-500 text-right">
-                                                         <input 
-                                                            type="number"
-                                                            value={v || ''}
-                                                            onChange={(e) => handleSubValueChange(cat, sub.id, i, Number(e.target.value) || 0)}
-                                                            className="w-20 md:w-24 bg-transparent outline-none border border-transparent hover:border-slate-300 focus:border-blue-500 rounded p-1 text-right transition-colors"
-                                                        />
+                                                    <td key={i} className="py-2 px-2 text-sm text-slate-500 text-right group/cell relative">
+                                                        <div className="flex items-center justify-end">
+                                                            <button 
+                                                                onClick={() => handleRepeatSubValue(cat, sub.id, v || 0)}
+                                                                className="mr-1 opacity-0 group-hover/cell:opacity-100 p-1 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-all"
+                                                                title="Repetir valor para todos os meses"
+                                                            >
+                                                                <Copy className="w-3.5 h-3.5" />
+                                                            </button>
+                                                            <input 
+                                                                type="number"
+                                                                value={v || ''}
+                                                                onChange={(e) => handleSubValueChange(cat, sub.id, i, Number(e.target.value) || 0)}
+                                                                className="w-20 md:w-24 bg-transparent outline-none border border-transparent hover:border-slate-300 focus:border-blue-500 rounded p-1 text-right transition-colors"
+                                                            />
+                                                        </div>
                                                     </td>
                                                 ))}
                                                 <td className="py-3 px-6 text-sm font-semibold text-slate-700 text-right bg-blue-50/10">
@@ -575,6 +615,9 @@ export default function FinancialDashboard() {
                     </div>
                 </div>
             )}
+            
+            <LoadingOverlay isVisible={isSaving} text="Salvando dashboard..." />
+            <LoadingOverlay isVisible={isLoading} text="Carregando dados..." />
         </div>
     );
 }
