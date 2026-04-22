@@ -1,12 +1,14 @@
 {
     "folders": [
-		{
-			"path": "."
-		}
-	],
+        {
+            "path": ".",
+        },
+    ],
     "settings": {
         "csharp-dev-tools.roslyn.projectOrSolutionFiles": [
-            "c:\\Users\\Employee\\source\\repos\\gasControl\\backend\\GasControl.Api.sln"
-        ]
-    }
+            "c:\\Users\\Employee\\source\\repos\\gasControl\\backend\\GasControl.Api.sln",
+        ],
+        "editor.formatOnPaste": true,
+        "editor.tabCompletion": "on",
+    },
 }

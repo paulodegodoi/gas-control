@@ -1,180 +1,243 @@
-import { useState, useEffect, useCallback } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import NavigationHeader from './components/NavigationHeader';
-import ApartmentsManager from './components/ApartmentsManager';
-import UsersManager from './components/UsersManager';
-import ControlPanel from './components/ControlPanel';
-import FinancialDashboard from './components/FinancialDashboard';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import LoginPage from './pages/LoginPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
-import SetupPasswordPage from './pages/SetupPasswordPage';
-import SelectCondominiumPage from './pages/SelectCondominiumPage';
-import PrivateRoute from './components/PrivateRoute';
-import LoadingOverlay from './components/LoadingOverlay';
+import { useState, useEffect, useCallback } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import NavigationHeader from "./components/NavigationHeader";
+import ApartmentsManager from "./components/ApartmentsManager";
+import UsersManager from "./components/UsersManager";
+import ControlPanel from "./components/ControlPanel";
+import FinancialDashboard from "./components/FinancialDashboard";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import LoginPage from "./pages/LoginPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import SetupPasswordPage from "./pages/SetupPasswordPage";
+import SelectCondominiumPage from "./pages/SelectCondominiumPage";
+import PrivateRoute from "./components/PrivateRoute";
+import LoadingOverlay from "./components/LoadingOverlay";
+import { useNavigate, useLocation } from "react-router-dom";
 
-import type { Apartment } from './types';
+import type { Apartment } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
 function AppContent() {
-	const [activeModule, setActiveModule] = useState<'gas' | 'water' | 'finance' | 'members'>('gas');
+    const location = useLocation();
+
+    const getModuleFromPath = () => {
+        const path = location.pathname;
+        switch (path) {
+            case "/water":
+                return "water";
+            case "/finance":
+                return "finance";
+            case "/members":
+                return "members";
+            default:
+                return "gas";
+        }
+    };
+    const navigate = useNavigate();
+
+    const setActiveModule = (module: string) => {
+        navigate(`/${module}`);
+    };
+
+    const activeModule = getModuleFromPath();
     const [apartments, setApartments] = useState<Apartment[]>([]);
     const [isSaving, setIsSaving] = useState(false);
-	const { token, user, activeCondominiumId } = useAuth();
+    const { token, user, activeCondominiumId } = useAuth();
 
     const fetchApartments = useCallback(async () => {
-		if (!token) return;
-		try {
-            const url = `${API_BASE}/api/apartments` + (activeCondominiumId ? `?condominiumId=${activeCondominiumId}` : '');
-			const res = await fetch(url, {
-				headers: { 'Authorization': `Bearer ${token}` }
-			});
-			if (res.ok) setApartments(await res.json());
-		} catch (e) { console.error('Erro ao buscar apartamentos', e); }
-	}, [token, activeCondominiumId]);
-
-    useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect
-		fetchApartments();
-	}, [fetchApartments]);
-
-    useEffect(() => {
-        if (user?.role === 'Morador' && activeModule === 'finance') {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setActiveModule('gas');
+        if (!token) return;
+        try {
+            const url =
+                `${API_BASE}/api/apartments` +
+                (activeCondominiumId
+                    ? `?condominiumId=${activeCondominiumId}`
+                    : "");
+            const res = await fetch(url, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) setApartments(await res.json());
+        } catch (e) {
+            console.error("Erro ao buscar apartamentos", e);
         }
-    }, [user, activeModule]);
+    }, [token, activeCondominiumId]);
+
+    useEffect(() => {
+        void fetchApartments();
+    }, [fetchApartments]);
+
+    useEffect(() => {
+        if (user?.role === "Morador" && activeModule === "finance") {
+            navigate("/gas", { replace: true });
+        }
+    }, [user, activeModule, navigate]);
 
     const handleAddApartment = async (number: string, name: string) => {
         setIsSaving(true);
         try {
             const res = await fetch(`${API_BASE}/api/apartments`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ number, name, condominiumId: activeCondominiumId || null })
+                body: JSON.stringify({
+                    number,
+                    name,
+                    condominiumId: activeCondominiumId || null,
+                }),
             });
             if (res.ok) {
                 const created = await res.json();
-                setApartments(prev => [...prev, created]);
+                setApartments((prev) => [...prev, created]);
             }
         } finally {
             setIsSaving(false);
         }
-	};
+    };
 
-     const handleToggleActive = async (id: string, currentStatus: boolean) => {
+    const handleToggleActive = async (id: string, currentStatus: boolean) => {
         setIsSaving(true);
         try {
             const res = await fetch(`${API_BASE}/api/apartments/${id}/state`, {
-                method: 'PATCH',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ isActive: !currentStatus })
+                body: JSON.stringify({ isActive: !currentStatus }),
             });
             if (res.ok) {
                 const updated = await res.json();
-                setApartments(prev => prev.map(a => a.id === id ? updated : a));
+                setApartments((prev) =>
+                    prev.map((a) => (a.id === id ? updated : a)),
+                );
             }
         } finally {
             setIsSaving(false);
         }
-	};
+    };
 
-    const handleEditApartment = async (id: string, number: string, name: string) => {
+    const handleEditApartment = async (
+        id: string,
+        number: string,
+        name: string,
+    ) => {
         setIsSaving(true);
         try {
             const res = await fetch(`${API_BASE}/api/apartments/${id}`, {
-                method: 'PUT',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ number, name })
+                body: JSON.stringify({ number, name }),
             });
             if (res.ok) {
                 const updated = await res.json();
-                setApartments(prev => prev.map(a => a.id === id ? updated : a));
+                setApartments((prev) =>
+                    prev.map((a) => (a.id === id ? updated : a)),
+                );
             }
         } finally {
             setIsSaving(false);
         }
-	};
+    };
 
-	if (user?.role !== 'Morador' && !activeCondominiumId) {
+    if (user?.role !== "Morador" && !activeCondominiumId) {
         return <Navigate to="/select-condominium" replace />;
     }
 
-	return (
-		<div className={`min-h-screen text-slate-800 p-6 md:p-12 font-sans transition-colors ${activeModule === 'gas' ? 'theme-gas bg-slate-50' : activeModule === 'water' ? 'theme-water bg-slate-50' : 'theme-finance bg-slate-50'}`}>
-			<div className="max-w-screen-2xl mx-auto">
-				<NavigationHeader activeModule={activeModule} setActiveModule={setActiveModule} />
+    return (
+        <div
+            className={`min-h-screen text-slate-800 p-6 md:p-12 font-sans transition-colors ${activeModule === "gas" ? "theme-gas bg-slate-50" : activeModule === "water" ? "theme-water bg-slate-50" : "theme-finance bg-slate-50"}`}
+        >
+            <div className="max-w-screen-2xl mx-auto">
+                <NavigationHeader
+                    activeModule={activeModule}
+                    setActiveModule={setActiveModule}
+                />
 
-				{activeModule === 'members' && user?.role !== 'Morador' ? (
-					<div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-						<div>
-							<ApartmentsManager 
-								apartments={apartments}
-								onAddApartment={handleAddApartment}
-								onToggleActive={handleToggleActive}
-								onEditApartment={handleEditApartment}
-							/>
-						</div>
-						<div>
+                {activeModule === "members" && user?.role !== "Morador" ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div>
+                            <ApartmentsManager
+                                apartments={apartments}
+                                onAddApartment={handleAddApartment}
+                                onToggleActive={handleToggleActive}
+                                onEditApartment={handleEditApartment}
+                            />
+                        </div>
+                        <div>
                             <UsersManager />
-						</div>
-					</div>
-				) : (
-					<div className="w-full">
-                        {activeModule === 'gas' && (
-                            <ControlPanel moduleName="gas" apartments={apartments} />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="w-full">
+                        {activeModule === "gas" && (
+                            <ControlPanel
+                                moduleName="gas"
+                                apartments={apartments}
+                            />
                         )}
-                        {activeModule === 'water' && (
-                            <ControlPanel moduleName="water" apartments={apartments} />
+                        {activeModule === "water" && (
+                            <ControlPanel
+                                moduleName="water"
+                                apartments={apartments}
+                            />
                         )}
-                        {activeModule === 'finance' && user?.role !== 'Morador' && (
-                            <FinancialDashboard />
-                        )}
-					</div>
-				)}
-			</div>
-            
+                        {activeModule === "finance" &&
+                            user?.role !== "Morador" && <FinancialDashboard />}
+                    </div>
+                )}
+            </div>
+
             <LoadingOverlay isVisible={isSaving} text="Salvando..." />
-		</div>
-	);
+        </div>
+    );
 }
 
 export default function App() {
-	return (
-		<AuthProvider>
-			<BrowserRouter>
-				<Routes>
-					<Route path="/login" element={<LoginPage />} />
-					<Route path="/forgot-password" element={<ForgotPasswordPage />} />
-					<Route path="/reset-password" element={<ResetPasswordPage />} />
-					<Route path="/setup-password" element={
-						<PrivateRoute>
-							<SetupPasswordPage />
-						</PrivateRoute>
-					} />
-					<Route path="/select-condominium" element={
-						<PrivateRoute>
-							<SelectCondominiumPage />
-						</PrivateRoute>
-					} />
-					<Route path="/*" element={
-						<PrivateRoute>
-							<AppContent />
-						</PrivateRoute>
-					} />
-				</Routes>
-			</BrowserRouter>
-		</AuthProvider>
-	);
+    return (
+        <AuthProvider>
+            <BrowserRouter>
+                <Routes>
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route
+                        path="/forgot-password"
+                        element={<ForgotPasswordPage />}
+                    />
+                    <Route
+                        path="/reset-password"
+                        element={<ResetPasswordPage />}
+                    />
+                    <Route
+                        path="/setup-password"
+                        element={
+                            <PrivateRoute>
+                                <SetupPasswordPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/select-condominium"
+                        element={
+                            <PrivateRoute>
+                                <SelectCondominiumPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/*"
+                        element={
+                            <PrivateRoute>
+                                <AppContent />
+                            </PrivateRoute>
+                        }
+                    />
+                </Routes>
+            </BrowserRouter>
+        </AuthProvider>
+    );
 }
