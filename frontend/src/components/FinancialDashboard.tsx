@@ -15,9 +15,10 @@ import {
     Edit2,
     Trash2,
     Copy,
+    Download,
 } from "lucide-react";
 import LoadingOverlay from "./LoadingOverlay";
-
+import { useAuthenticatedFetch } from "../hooks/useAuthenticatedFetch";
 const API_BASE = import.meta.env.VITE_API_URL;
 
 const CATEGORIAS = [
@@ -59,6 +60,7 @@ interface CategoryData {
 
 export default function FinancialDashboard() {
     const { token, activeCondominiumId } = useAuth();
+    const authenticatedFetch = useAuthenticatedFetch();
     const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
     const [isSubCatModalOpen, setIsSubCatModalOpen] = useState(false);
     const [activeParentCat, setActiveParentCat] = useState<string | null>(null);
@@ -75,6 +77,7 @@ export default function FinancialDashboard() {
     const [originalDataStr, setOriginalDataStr] = useState<string>("{}");
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     useEffect(() => {
         if (!token || !activeCondominiumId) return;
@@ -82,7 +85,7 @@ export default function FinancialDashboard() {
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                const res = await fetch(
+                const res = await authenticatedFetch(
                     `${API_BASE}/api/finance/${activeCondominiumId}/${year}`,
                     {
                         headers: { Authorization: `Bearer ${token}` },
@@ -112,7 +115,7 @@ export default function FinancialDashboard() {
         };
 
         fetchData();
-    }, [token, activeCondominiumId, year]);
+    }, [token, activeCondominiumId, year, authenticatedFetch]);
 
     const handleSave = async () => {
         if (!token || !activeCondominiumId) return;
@@ -120,7 +123,7 @@ export default function FinancialDashboard() {
 
         try {
             const payload = CATEGORIAS.map((cat) => data[cat]).filter(Boolean); // All available categories
-            const res = await fetch(
+            const res = await authenticatedFetch(
                 `${API_BASE}/api/finance/sync/${activeCondominiumId}/${year}`,
                 {
                     method: "POST",
@@ -139,6 +142,36 @@ export default function FinancialDashboard() {
             console.error("Error saving finance data", error);
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleExportPdf = async () => {
+        if (!token || !activeCondominiumId) return;
+        setIsExporting(true);
+        try {
+            const res = await authenticatedFetch(
+                `${API_BASE}/api/finance/${activeCondominiumId}/${year}/export`,
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                },
+            );
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `Dashboard_Financeiro_${year}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } else {
+                console.error("Failed to export PDF", res.status);
+            }
+        } catch (error) {
+            console.error("Error exporting PDF", error);
+        } finally {
+            setIsExporting(false);
         }
     };
 
@@ -397,6 +430,19 @@ export default function FinancialDashboard() {
                             </>
                         )}
                     </div>
+
+                    <button
+                        onClick={handleExportPdf}
+                        disabled={isExporting}
+                        className="flex-1 md:flex-none flex items-center justify-center px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-xl shadow-sm transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                        {isExporting ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                            <Download className="w-4 h-4 mr-2" />
+                        )}
+                        Exportar PDF
+                    </button>
 
                     <button
                         onClick={handleSave}

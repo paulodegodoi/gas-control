@@ -14,6 +14,7 @@ import SelectCondominiumPage from "./pages/SelectCondominiumPage";
 import PrivateRoute from "./components/PrivateRoute";
 import LoadingOverlay from "./components/LoadingOverlay";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuthenticatedFetch } from "./hooks/useAuthenticatedFetch";
 
 import type { Apartment } from "./types";
 
@@ -45,6 +46,7 @@ function AppContent() {
     const [apartments, setApartments] = useState<Apartment[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const { token, user, activeCondominiumId } = useAuth();
+    const authenticatedFetch = useAuthenticatedFetch();
 
     const fetchApartments = useCallback(async () => {
         if (!token) return;
@@ -54,7 +56,7 @@ function AppContent() {
                 (activeCondominiumId
                     ? `?condominiumId=${activeCondominiumId}`
                     : "");
-            const res = await fetch(url, {
+            const res = await authenticatedFetch(url, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (res.ok) setApartments(await res.json());
@@ -76,7 +78,7 @@ function AppContent() {
     const handleAddApartment = async (number: string, name: string) => {
         setIsSaving(true);
         try {
-            const res = await fetch(`${API_BASE}/api/apartments`, {
+            const res = await authenticatedFetch(`${API_BASE}/api/apartments`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -100,7 +102,7 @@ function AppContent() {
     const handleToggleActive = async (id: string, currentStatus: boolean) => {
         setIsSaving(true);
         try {
-            const res = await fetch(`${API_BASE}/api/apartments/${id}/state`, {
+            const res = await authenticatedFetch(`${API_BASE}/api/apartments/${id}/state`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -126,7 +128,7 @@ function AppContent() {
     ) => {
         setIsSaving(true);
         try {
-            const res = await fetch(`${API_BASE}/api/apartments/${id}`, {
+            const res = await authenticatedFetch(`${API_BASE}/api/apartments/${id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",

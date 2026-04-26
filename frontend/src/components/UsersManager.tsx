@@ -1,11 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import type { AuthUser } from '../types';
+import { useAuthenticatedFetch } from '../hooks/useAuthenticatedFetch';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
 export default function UsersManager() {
     const { token, activeCondominiumId } = useAuth();
+    const authenticatedFetch = useAuthenticatedFetch();
     const [users, setUsers] = useState<AuthUser[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -14,7 +16,7 @@ export default function UsersManager() {
 
         try {
             setLoading(true);
-            const res = await fetch(`${API_BASE}/api/auth/users`, {
+            const res = await authenticatedFetch(`${API_BASE}/api/auth/users`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 

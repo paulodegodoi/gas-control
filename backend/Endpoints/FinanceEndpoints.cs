@@ -85,6 +85,25 @@ public static class FinanceEndpoints
             await db.SaveChangesAsync();
             return Results.Ok();
         }).RequireAuthorization("CanWrite");
+
+        // GET Export Dashboard Data to PDF
+        app.MapGet("/api/finance/{condominiumId}/{year}/export", async (AppDbContext db, string condominiumId, int year) =>
+        {
+            var categories = await db.FinanceCategories
+                .Include(c => c.SubCategories)
+                .Where(c => c.CondominiumId == condominiumId && c.Year == year)
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+
+            if (categories.Count == 0)
+            {
+                return Results.NotFound("Nenhum dado encontrado para este ano.");
+            }
+
+            var pdfBytes = Services.FinancePdfGenerator.GeneratePdf(categories, year);
+
+            return Results.File(pdfBytes, "application/pdf", $"Dashboard_Financeiro_{year}.pdf");
+        }).RequireAuthorization("ReadOnly");
     }
 }
 

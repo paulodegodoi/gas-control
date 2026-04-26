@@ -5,6 +5,7 @@ import SummaryCards from "./SummaryCards";
 import ReadingsList, { type CurrentReadingData } from "./ReadingsList";
 import { useAuth } from "../context/AuthContext";
 import LoadingOverlay from "./LoadingOverlay";
+import { useAuthenticatedFetch } from "../hooks/useAuthenticatedFetch";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -37,6 +38,7 @@ export default function ControlPanel({
         Reading[]
     >([]);
     const { token, user, activeCondominiumId } = useAuth();
+    const authenticatedFetch = useAuthenticatedFetch();
 
     const [selectedMonth, setSelectedMonth] = useState<string>(() => {
         const saved = localStorage.getItem(
@@ -75,7 +77,7 @@ export default function ControlPanel({
         async (month: string) => {
             if (!month || !token) return [];
             try {
-                const res = await fetch(
+                const res = await authenticatedFetch(
                     `${API_BASE}/api/${readingsApiUrl}?month=${month}`,
                     {
                         headers: { Authorization: `Bearer ${token}` },
@@ -87,7 +89,7 @@ export default function ControlPanel({
             }
             return [];
         },
-        [readingsApiUrl, token],
+        [readingsApiUrl, token, authenticatedFetch],
     );
 
     const loadMonthData = useCallback(async () => {
@@ -114,7 +116,7 @@ export default function ControlPanel({
                     (activeCondominiumId
                         ? `?condominiumId=${activeCondominiumId}`
                         : "");
-                const res = await fetch(url, {
+                const res = await authenticatedFetch(url, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (res.ok) {
@@ -127,7 +129,7 @@ export default function ControlPanel({
                 setPrice(0);
             }
         },
-        [priceApiUrl, token, activeCondominiumId],
+        [priceApiUrl, token, activeCondominiumId, authenticatedFetch],
     );
 
     useEffect(() => {
@@ -201,14 +203,17 @@ export default function ControlPanel({
         }
 
         try {
-            const res = await fetch(`${API_BASE}/api/${readingsApiUrl}/bulk`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
+            const res = await authenticatedFetch(
+                `${API_BASE}/api/${readingsApiUrl}/bulk`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(requests),
                 },
-                body: JSON.stringify(requests),
-            });
+            );
 
             if (res.ok) {
                 await loadMonthData();
@@ -222,18 +227,21 @@ export default function ControlPanel({
 
     const savePrice = async (newPrice: number) => {
         try {
-            const res = await fetch(`${API_BASE}/api/${priceApiUrl}`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
+            const res = await authenticatedFetch(
+                `${API_BASE}/api/${priceApiUrl}`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        month: selectedMonth,
+                        pricePerCubicMeter: newPrice,
+                        condominiumId: activeCondominiumId,
+                    }),
                 },
-                body: JSON.stringify({
-                    month: selectedMonth,
-                    pricePerCubicMeter: newPrice,
-                    condominiumId: activeCondominiumId,
-                }),
-            });
+            );
             if (res.ok) {
                 const updated = await res.json();
                 setPrice(updated.pricePerCubicMeter);
