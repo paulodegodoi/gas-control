@@ -21,6 +21,8 @@ public class TokenService
         var secretKey = jwtSettings["SecretKey"]
             ?? throw new InvalidOperationException("JWT SecretKey não configurada.");
 
+        var expiresHours = jwtSettings.GetValue<double>("ExpiresInHours", 24);
+
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
@@ -47,7 +49,7 @@ public class TokenService
             issuer: jwtSettings["Issuer"],
             audience: jwtSettings["Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(8),
+            expires: DateTime.UtcNow.AddHours(expiresHours),
             signingCredentials: credentials
         );
 

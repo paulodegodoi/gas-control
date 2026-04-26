@@ -5,6 +5,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using System.Text;
+using QuestPDF.Infrastructure;
+
+QuestPDF.Settings.License = LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,12 +30,12 @@ builder.Services.AddScoped<Func<ClaimsPrincipal?>>(sp =>
     return () => accessor.HttpContext?.User;
 });
 
-// ---------------------------------------------------------
-// Autenticação JWT
-// ---------------------------------------------------------
-var jwtSection = builder.Configuration.GetSection("Jwt");
-var secretKey = jwtSection["SecretKey"]
-    ?? throw new InvalidOperationException("JWT SecretKey não configurada em appsettings.");
+    // ---------------------------------------------------------
+    // Autenticação JWT
+    // ---------------------------------------------------------
+    var jwtSection = builder.Configuration.GetSection("Jwt");
+    var secretKey = jwtSection["SecretKey"]
+        ?? throw new InvalidOperationException("JWT SecretKey não configurada em appsettings.");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -46,7 +49,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer = jwtSection["Issuer"],
             ValidAudience = jwtSection["Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
-            RoleClaimType = ClaimTypes.Role
+            RoleClaimType = ClaimTypes.Role,
+            ClockSkew = TimeSpan.Zero
         };
     });
 
