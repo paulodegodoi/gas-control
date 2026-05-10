@@ -1,4 +1,6 @@
 using GasControl.Api.Models;
+using GasControl.Api.Models.Gas;
+using GasControl.Api.Models.Water;
 using Microsoft.EntityFrameworkCore;
 
 namespace GasControl.Api.Endpoints;
@@ -56,6 +58,31 @@ public static class ApartmentEndpoints
             await db.SaveChangesAsync();
             return Results.Ok(apt);
         }).RequireAuthorization("CanWrite");
+
+        group.MapGet("/{id}/history", async (AppDbContext db, string id, [Microsoft.AspNetCore.Mvc.FromQuery] int limit = 12) =>
+        {
+            var apt = await db.Apartments.FindAsync(id);
+            if (apt is null) return Results.NotFound();
+
+            var gasReadings = await db.GasReadings
+                .Where(r => r.ApartmentId == id)
+                .OrderByDescending(r => r.Month)
+                .Take(limit)
+                .ToListAsync();
+
+            var waterReadings = await db.WaterReadings
+                .Where(r => r.ApartmentId == id)
+                .OrderByDescending(r => r.Month)
+                .Take(limit)
+                .ToListAsync();
+
+            return Results.Ok(new
+            {
+                Apartment = apt,
+                GasReadings = gasReadings,
+                WaterReadings = waterReadings
+            });
+        }).RequireAuthorization("ReadOnly");
     }
 }
 

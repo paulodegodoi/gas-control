@@ -17,6 +17,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuthenticatedFetch } from "./hooks/useAuthenticatedFetch";
 
 import type { Apartment } from "./types";
+import ApartmentDetailsPage from "./pages/ApartmentDetailsPage";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -219,6 +220,14 @@ export default function App() {
                         element={
                             <PrivateRoute>
                                 <SetupPasswordPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/apartments/:id"
+                        element={
+                            <PrivateRoute>
+                                <ApartmentDetailsPage />
                             </PrivateRoute>
                         }
                     />

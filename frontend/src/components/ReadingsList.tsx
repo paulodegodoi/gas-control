@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import type { Apartment } from "../types";
 
 export type CurrentReadingData = {
@@ -55,7 +56,7 @@ export default function ReadingsList({
                         }) => (
                             <div
                                 key={apartment.id}
-                                className="p-4 flex flex-col lg:flex-row items-center justify-between hover:bg-slate-50 transition-colors"
+                                className="p-4 flex flex-col lg:flex-row items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer"
                                 onClick={() => handleSelectInput(apartment.id)}
                             >
                                 <div className="flex items-center space-x-4 mb-4 lg:mb-0 w-full lg:w-auto">
@@ -63,13 +64,22 @@ export default function ReadingsList({
                                         {apartment.number}
                                     </div>
                                     <div>
-                                        <p className="font-semibold text-slate-800">
-                                            Apt {apartment.number}{" "}
-                                            <span className="text-slate-400 font-normal ml-1">
-                                                ({apartment.name})
-                                            </span>
-                                        </p>
-                                        <p className="text-xs text-slate-500">
+                                        <div className="flex items-center flex-wrap gap-2">
+                                            <p className="font-semibold text-slate-800">
+                                                Apt {apartment.number}{" "}
+                                                <span className="text-slate-400 font-normal ml-1">
+                                                    ({apartment.name})
+                                                </span>
+                                            </p>
+                                            <Link
+                                                to={`/apartments/${apartment.id}`}
+                                                className="text-xs font-bold text-primary-600 hover:text-primary-800 bg-primary-50 hover:bg-primary-100 px-2.5 py-1 rounded-md transition-colors whitespace-nowrap"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                Histórico
+                                            </Link>
+                                        </div>
+                                        <p className="text-xs text-slate-500 mt-1">
                                             Leitura Anterior:{" "}
                                             <span className="font-medium text-slate-700">
                                                 {previousReading} m³
