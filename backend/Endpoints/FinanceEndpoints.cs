@@ -8,12 +8,15 @@ public static class FinanceEndpoints
     public static void MapFinanceEndpoints(this IEndpointRouteBuilder app)
     {
         // GET Dashboard Data
-        app.MapGet("/api/finance/{condominiumId}/{year}", async (AppDbContext db, string condominiumId, int year) =>
+        app.MapGet("/api/finance/{condominiumId}/{year}/{type}", async (AppDbContext db, string condominiumId, int year, string type) =>
         {
+            if (!Enum.TryParse<EFinanceCategoryType>(type, true, out var parsedType))
+                return Results.BadRequest("Invalid type parameter.");
+
             var categories = await db.FinanceCategories
                 .Include(c => c.SubCategories)
-                .Where(c => c.CondominiumId == condominiumId && c.Year == year)
-                .OrderBy(c => c.Name) // Ensuring consistent order could be nice, or just rely on EF
+                .Where(c => c.CondominiumId == condominiumId && c.Year == year && c.Type == parsedType)
+                .OrderBy(c => c.Name)
                 .ToListAsync();
 
             if (categories.Count == 0)
@@ -28,6 +31,7 @@ public static class FinanceEndpoints
                         CondominiumId = condominiumId, 
                         Year = year, 
                         Name = c, 
+                        Type = parsedType,
                         BaseValues = new decimal[12] 
                     };
                     db.FinanceCategories.Add(cat);
@@ -40,11 +44,14 @@ public static class FinanceEndpoints
         }).RequireAuthorization("CanWrite"); // Only Sindico and Admin
 
         // POST Sync Dashboard Data
-        app.MapPost("/api/finance/sync/{condominiumId}/{year}", async (AppDbContext db, string condominiumId, int year, List<FinanceCategoryPayload> payload) =>
+        app.MapPost("/api/finance/sync/{condominiumId}/{year}/{type}", async (AppDbContext db, string condominiumId, int year, string type, List<FinanceCategoryPayload> payload) =>
         {
+            if (!Enum.TryParse<EFinanceCategoryType>(type, true, out var parsedType))
+                return Results.BadRequest("Invalid type parameter.");
+
             var existingCats = await db.FinanceCategories
                 .Include(c => c.SubCategories)
-                .Where(c => c.CondominiumId == condominiumId && c.Year == year)
+                .Where(c => c.CondominiumId == condominiumId && c.Year == year && c.Type == parsedType)
                 .ToListAsync();
 
             foreach (var reqCat in payload)
@@ -87,11 +94,14 @@ public static class FinanceEndpoints
         }).RequireAuthorization("CanWrite");
 
         // GET Export Dashboard Data to PDF
-        app.MapGet("/api/finance/{condominiumId}/{year}/export", async (AppDbContext db, string condominiumId, int year) =>
+        app.MapGet("/api/finance/{condominiumId}/{year}/{type}/export", async (AppDbContext db, string condominiumId, int year, string type) =>
         {
+            if (!Enum.TryParse<EFinanceCategoryType>(type, true, out var parsedType))
+                return Results.BadRequest("Invalid type parameter.");
+
             var categories = await db.FinanceCategories
                 .Include(c => c.SubCategories)
-                .Where(c => c.CondominiumId == condominiumId && c.Year == year)
+                .Where(c => c.CondominiumId == condominiumId && c.Year == year && c.Type == parsedType)
                 .OrderBy(c => c.Name)
                 .ToListAsync();
 
@@ -102,7 +112,7 @@ public static class FinanceEndpoints
 
             var pdfBytes = Services.FinancePdfGenerator.GeneratePdf(categories, year);
 
-            return Results.File(pdfBytes, "application/pdf", $"Dashboard_Financeiro_{year}.pdf");
+            return Results.File(pdfBytes, "application/pdf", $"Dashboard_Financeiro_{parsedType}_{year}.pdf");
         }).RequireAuthorization("ReadOnly");
     }
 }

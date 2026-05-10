@@ -20,3 +20,6 @@ appsettings.Development.json
 
 # --- Outros ---
 .vscode/ 
+
+# --- IDEs ---
+.idea/

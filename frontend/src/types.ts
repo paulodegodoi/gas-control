@@ -44,3 +44,5 @@ export type AuthContextType = {
     refreshContext: () => Promise<{ success: boolean; error?: string }>;
 	logout: () => void;
 };
+
+export type FinanceCategoryType = "Forecast" | "Realized";
