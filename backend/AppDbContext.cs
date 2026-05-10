@@ -83,6 +83,8 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<FinanceCategory>()
             .HasKey(f => f.Id);
         modelBuilder.Entity<FinanceCategory>()
+            .Property(f => f.Type);
+        modelBuilder.Entity<FinanceCategory>()
             .HasMany(f => f.SubCategories)
             .WithOne()
             .HasForeignKey(s => s.FinanceCategoryId)

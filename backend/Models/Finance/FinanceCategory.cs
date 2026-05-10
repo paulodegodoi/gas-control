@@ -7,6 +7,8 @@ public class FinanceCategory
     public int Year { get; set; }
     public string Name { get; set; } = string.Empty;
     
+    public EFinanceCategoryType Type { get; set; } = EFinanceCategoryType.Forecast;
+    
     public decimal[] BaseValues { get; set; } = new decimal[12];
     
     public List<FinanceSubCategory> SubCategories { get; set; } = new();
