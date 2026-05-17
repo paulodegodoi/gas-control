@@ -80,11 +80,7 @@ export default function ForgotPasswordPage() {
 
                     {message && (
                         <div
-                            className="login-error"
-                            style={{
-                                backgroundColor: "#2e7d32",
-                                color: "white",
-                            }}
+                            className="login-error login-success"
                             role="alert"
                         >
                             ✅ {message}
@@ -113,11 +109,7 @@ export default function ForgotPasswordPage() {
                     <div style={{ marginTop: "1rem", textAlign: "center" }}>
                         <Link
                             to="/login"
-                            style={{
-                                color: "#fff",
-                                fontSize: "0.9rem",
-                                textDecoration: "underline",
-                            }}
+                            className="login-link"
                         >
                             Voltar para o Login
                         </Link>

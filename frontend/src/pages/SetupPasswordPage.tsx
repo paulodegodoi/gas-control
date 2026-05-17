@@ -121,7 +121,7 @@ export default function SetupPasswordPage() {
 					</div>
 
 					{message && (
-						<div className="login-error" style={{ backgroundColor: '#2e7d32', color: 'white' }} role="alert">
+						<div className="login-error login-success" role="alert">
 							✅ {message}
 						</div>
 					)}
